@@ -1,2 +1,2 @@
 mcp>=1.13.0
-watchdog>=3.0.0
+watchdog[watchmedo]>=3.0.0
