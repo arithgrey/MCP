@@ -16,9 +16,7 @@ services:
       - MCP_HOST=${MCP_HOST:-0.0.0.0}
       - MCP_PORT=${MCP_PORT:-3000}
     volumes:
-      # Volúmenes para desarrollo - comentar en producción
-      - ./src:/app/src
-      - ./run_server.py:/app/run_server.py
+      - .:/app
     networks:
       - mcp-network
 networks:
