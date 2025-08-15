@@ -1,0 +1,13 @@
+[project]
+name = "mcp-adk-hello"
+version = "0.1.0"
+description = "Servidor MCP Hola Mundo"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[project.dependencies]
+mcp = "*"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
