@@ -1,6 +1,3 @@
-"""
-Script principal del servidor MCP
-"""
 from mcp.server.fastmcp import FastMCP
 from src.config import SERVER_NAME, SERVER_CONFIG
 from src.tools import register_tools

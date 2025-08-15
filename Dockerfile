@@ -16,21 +16,15 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copiar código fuente
-COPY src/ ./src/
-COPY run_server.py ./
+COPY . .
+
 
 # Exponer puerto 3000 para SSE
 EXPOSE 3000
 
 # Variables de entorno
 ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1g_s   
 
-# Comando de inicio - ejecutar watchmedo como solicitaste
-CMD ["watchmedo", "auto-restart", \
-     "--directory=./", \
-     "--pattern=*.py", \
-     "--recursive", \
-     "--", \
-     "python", "run_server.py"] 
+# Configura el entrypoint para ejecutar las migraciones y levantar el servidor
+ENTRYPOINT ["/app/watch.sh"]
