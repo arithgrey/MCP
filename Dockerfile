@@ -18,13 +18,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-
-# Exponer puerto 3000 para SSE
-EXPOSE 3000
+# Exponer puerto 8000 para SSE
+EXPOSE 8000
 
 # Variables de entorno
 ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1g_s   
+ENV PYTHONUNBUFFERED=1
 
-# Configura el entrypoint para ejecutar las migraciones y levantar el servidor
-ENTRYPOINT ["/app/watch.sh"]
+# Configura el entrypoint para ejecutar el servidor MCP en modo SSE
+ENTRYPOINT ["python", "run_server.py", "--sse"]

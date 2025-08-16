@@ -9,7 +9,8 @@ BASE_DIR = Path(__file__).parent.parent.parent
 
 # Configuración del servidor
 SERVER_CONFIG = {
-    "transport": "sse"
+    "transport": "stdio",  # Transporte estándar para MCP
+    "port": 8000  # Puerto para modo SSE (testing)
 }
 
 # Token de proxy para el inspector
