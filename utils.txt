@@ -1,0 +1,6 @@
+instalar el  modelcontextprotocol -> 
+npm install -g @modelcontextprotocol/inspector
+ver el modelcontextprotocol -> mcp-inspector http://127.0.0.1:8000/sse
+
+
+mcp-inspector http://127.0.0.1:3000/sse
