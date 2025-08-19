@@ -1,0 +1,9 @@
+endpoints:
+base_url: "http://localhost:8080"
+readiness: "/readiness"
+liveness: "/liveness"
+
+
+thresholds:
+http_latency_ms: 300
+coverage_min: 0.80

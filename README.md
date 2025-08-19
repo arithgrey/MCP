@@ -1,154 +1,208 @@
-# Servidor MCP con Herramienta de Verificación TDD
+# MCP Health Check Service
 
-Este proyecto implementa un servidor MCP (Model Context Protocol) que incluye una herramienta especializada para verificar el cumplimiento de la política de desarrollo TDD (Test-Driven Development).
+Un servidor MCP (Model Context Protocol) completo para validar la salud de servicios web con capacidades de terminal integradas.
 
 ## 🚀 Características
 
-### Herramientas Básicas
-- `say_hello`: Saludo personalizado
-- `sum_numbers`: Suma de dos números
-- `list_items`: Lista elementos recibidos
+- **Health Checks Automatizados**: Verificación de endpoints de readiness y liveness
+- **Configuración YAML**: Configuración flexible de servicios y umbrales
+- **Herramientas de Terminal**: Ejecución de comandos y monitoreo del sistema
+- **Auditorías en Lote**: Verificación de múltiples servicios simultáneamente
+- **Reportes Detallados**: Generación de reportes legibles con métricas
+- **Integración MCP**: Compatible con Cursor y otros clientes MCP
 
-### 🧪 Herramienta TDD (`tdd_policy_check`)
-Verifica automáticamente que todo desarrollo siga TDD:
+## 🏗️ Arquitectura
 
-- **`scan`**: Analiza el repo y valida política TDD
-- **`run`**: Ejecuta tests con `docker exec <container_name> pytest`
-- **`full_check`**: Ejecuta scan y, si pasa, ejecuta tests
+```
+src/
+├── config/           # Configuración y esquemas
+├── core/            # Modelos de datos
+├── tools/           # Herramientas MCP
+│   ├── health.py           # Health checks HTTP
+│   ├── audit_repo.py       # Orquestador de auditorías
+│   ├── terminal_tools.py   # Herramientas de terminal
+│   └── basic_tools.py      # Registro de herramientas
+└── tests/           # Tests unitarios
+```
 
-## 📋 Política TDD Implementada
+## 🛠️ Instalación
 
-1. **TDD siempre**: Por cada módulo nuevo o modificado debe existir al menos un test correspondiente
-2. **Ubicación de tests**: Todos los archivos de test deben estar únicamente en `./tests/`
-3. **Ejecución de tests**: Usa exactamente `docker exec <container_name> pytest`
-4. **Fallo explícito**: Si hay violaciones, `status = "failed"` con detalle
+1. **Clonar el repositorio**:
+```bash
+git clone <repo-url>
+cd MCP
+```
 
-## 🛠️ Instalación y Uso
-
-### 1. Instalar dependencias
+2. **Instalar dependencias**:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configurar variables de entorno
+3. **Configurar el archivo de auditoría**:
 ```bash
-cp env.example .env
-# Editar .env con tus valores
+cp src/config/audit.example.yaml src/config/audit.yaml
+# Editar src/config/audit.yaml según tus necesidades
 ```
 
-### 3. Ejecutar con Docker
+## 📋 Configuración
+
+### Archivo `audit.yaml`
+
+```yaml
+endpoints:
+  base_url: "http://localhost:8080"
+  readiness: "/readiness"
+  liveness: "/liveness"
+
+thresholds:
+  http_latency_ms: 300
+  coverage_min: 0.80
+
+services:
+  local_service:
+    name: "Servicio Local"
+    base_url: "http://localhost:8080"
+    readiness: "/readiness"
+    liveness: "/liveness"
+```
+
+## 🚀 Uso
+
+### 1. Iniciar el servidor MCP
+
 ```bash
-docker-compose up --build
+# Modo stdio (recomendado para Cursor)
+python mcp_server.py
+
+# Modo SSE para testing
+python mcp_server.py --sse
 ```
 
-### 4. Ejecutar localmente
-```bash
-python3 run_server.py
+### 2. Herramientas Disponibles
+
+#### Health Checks Individuales
+
+- `health_readiness_check`: Verifica readiness de un servicio
+- `health_liveness_check`: Verifica liveness de un servicio
+- `health_comprehensive_check`: Check completo (readiness + liveness)
+
+#### Auditorías
+
+- `audit_repo_run`: Ejecuta auditoría usando configuración YAML
+- `terminal_run_health_audit`: Auditoría con reporte formateado
+- `terminal_batch_health_check`: Health checks en lote
+
+#### Herramientas de Terminal
+
+- `terminal_execute_command`: Ejecuta comandos de terminal
+- `terminal_get_system_info`: Información del sistema
+- `terminal_health_check_service`: Health check con formato de terminal
+
+### 3. Ejemplos de Uso
+
+#### Health Check Básico
+```python
+# Verificar readiness
+result = await health_readiness_check(
+    base_url="http://localhost:8080",
+    path="/readiness",
+    max_latency_ms=300
+)
+
+# Verificar liveness
+result = await health_liveness_check(
+    base_url="http://localhost:8080",
+    path="/liveness",
+    max_latency_ms=300
+)
 ```
 
-## 📊 Uso de la Herramienta TDD
+#### Auditoría Completa
+```python
+# Ejecutar auditoría con configuración por defecto
+audit_result = await audit_repo_run()
 
-### Ejemplo de uso básico
-```json
-{
-  "tool": "tdd_policy_check",
-  "input": {
-    "action": "full_check",
-    "container_name": "mcp-service",
-    "since_ref": "HEAD~1"
-  }
-}
+# Ejecutar auditoría con archivo personalizado
+audit_result = await audit_repo_run("custom_audit.yaml")
 ```
 
-### Parámetros disponibles
-- `container_name` (requerido): Nombre del contenedor Docker
-- `repo_root` (opcional): Ruta raíz del repo (default: ".")
-- `since_ref` (opcional): Referencia git para cambios (default: "HEAD~1")
-- `action` (opcional): "scan", "run", o "full_check" (default: "full_check")
+#### Comandos de Terminal
+```python
+# Ejecutar comando
+result = await terminal_execute_command("ls -la")
 
-### Respuesta de ejemplo
-```json
-{
-  "status": "passed",
-  "summary": "✅ Política TDD cumplida. 3 tests encontrados en ./tests/",
-  "violations": [],
-  "metrics": {
-    "tests_found": 3,
-    "tests_outside_tests_dir": 0,
-    "changed_modules": 2,
-    "modules_with_tests": 2,
-    "duration_seconds": 0
-  },
-  "cmd_executed": null,
-  "stdout": null,
-  "stderr": null
-}
+# Obtener información del sistema
+sys_info = await terminal_get_system_info()
 ```
-
-## 🔍 Códigos de Violación
-
-- `TESTS_OUTSIDE_DIR`: Tests encontrados fuera de `./tests/`
-- `NO_TESTS_FOUND`: No se encontró la carpeta `./tests/`
-- `PYTEST_NOT_FOUND`: pytest no disponible
-- `DOCKER_EXEC_FAILED`: Error ejecutando tests en Docker
-- `TDD_HEURISTIC_FAILED`: Módulos modificados sin tests correspondientes
 
 ## 🧪 Testing
 
-Ejecutar tests localmente:
+Ejecutar las pruebas:
+
 ```bash
-python3 -m pytest tests/
+python test_mcp.py
 ```
 
-Ejecutar tests en Docker:
-```bash
-docker exec mcp-service pytest
-```
+## 📊 Monitoreo
 
-## 📁 Estructura del Proyecto
+El MCP proporciona métricas detalladas:
 
-```
-MCP/
-├── src/
-│   ├── tools/
-│   │   ├── basic_tools.py      # Herramientas básicas
-│   │   └── tdd_policy_check.py # Herramienta TDD
-│   └── config/
-│       └── settings.py         # Configuración
-├── tests/                      # Tests del proyecto
-├── docker-compose.yml          # Configuración Docker
-├── run_server.py               # Servidor principal
-└── requirements.txt            # Dependencias
-```
-
-## 🌐 Modos de Ejecución
-
-### Modo stdio (recomendado para Cursor)
-```bash
-python3 run_server.py
-```
-
-### Modo SSE (para testing con MCP Inspector)
-```bash
-python3 run_server.py --sse
-```
+- **Estado del servicio**: HEALTHY, UNHEALTHY, DEGRADED, UNKNOWN
+- **Latencia**: Tiempo de respuesta en milisegundos
+- **Códigos de respuesta**: HTTP status codes
+- **Errores**: Mensajes de error detallados
+- **Reportes**: Resúmenes consolidados con porcentajes de salud
 
 ## 🔧 Desarrollo
 
-### Agregar nueva herramienta
-1. Crear archivo en `src/tools/`
-2. Importar en `src/tools/__init__.py`
-3. Registrar en `src/tools/basic_tools.py`
+### Estructura del Proyecto
 
-### Estructura de herramienta MCP
-```python
-@mcp.tool()
-def mi_herramienta(param1: str, param2: int) -> dict:
-    """Descripción de la herramienta"""
-    # Lógica de la herramienta
-    return {"result": "valor"}
+- **`mcp_server.py`**: Punto de entrada principal
+- **`src/tools/health.py`**: Lógica de health checks HTTP
+- **`src/tools/audit_repo.py`**: Orquestador de auditorías
+- **`src/tools/terminal_tools.py`**: Herramientas de terminal
+- **`src/core/models.py`**: Modelos de datos Pydantic
+
+### Agregar Nuevas Herramientas
+
+1. Crear función en el módulo apropiado
+2. Registrar en `src/tools/basic_tools.py`
+3. Agregar documentación y tipos
+
+### Testing
+
+```bash
+# Ejecutar tests unitarios
+python -m pytest tests/
+
+# Ejecutar script de prueba
+python test_mcp.py
 ```
+
+## 🌐 Integración con Cursor
+
+1. **Configurar Cursor** para usar el MCP
+2. **Importar herramientas** en tu workspace
+3. **Usar comandos** directamente desde el chat
 
 ## 📝 Licencia
 
-Este proyecto está bajo licencia MIT. 
+MIT License
+
+## 🤝 Contribuciones
+
+¡Las contribuciones son bienvenidas! Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature
+3. Commit tus cambios
+4. Push a la rama
+5. Abre un Pull Request
+
+## 📞 Soporte
+
+Para soporte o preguntas:
+
+- Abre un issue en GitHub
+- Revisa la documentación
+- Consulta los ejemplos de uso 
