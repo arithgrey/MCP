@@ -5,6 +5,7 @@ Un servidor MCP (Model Context Protocol) completo para validar la salud de servi
 ## 🚀 Características
 
 - **Health Checks Automatizados**: Verificación de endpoints de readiness y liveness
+- **Testing con Docker Exec**: Ejecución de tests usando `docker exec nombre_servicio pytest`
 - **Configuración YAML**: Configuración flexible de servicios y umbrales
 - **Herramientas de Terminal**: Ejecución de comandos y monitoreo del sistema
 - **Auditorías en Lote**: Verificación de múltiples servicios simultáneamente
@@ -21,6 +22,7 @@ src/
 │   ├── health.py           # Health checks HTTP
 │   ├── audit_repo.py       # Orquestador de auditorías
 │   ├── terminal_tools.py   # Herramientas de terminal
+│   ├── testing_tools.py    # Herramientas de testing con Docker
 │   └── basic_tools.py      # Registro de herramientas
 └── tests/           # Tests unitarios
 ```
@@ -66,6 +68,31 @@ services:
     liveness: "/liveness"
 ```
 
+### Archivo `testing.yaml`
+
+```yaml
+# Configuración de Docker
+docker:
+  default_service: "mcp-service"
+  network: "mcp-network"
+  timeout_seconds: 300
+
+# Configuración de pytest
+pytest:
+  default_command: "pytest"
+  coverage_args: "--cov=src --cov-report=html --cov-report=term-missing"
+  verbose_output: true
+  parallel_workers: 4
+
+# Configuración de servicios
+services:
+  mcp_service:
+    name: "mcp-service"
+    container_name: "mcp-service"
+    test_path: "/app/tests"
+    pytest_config: "pytest.ini"
+```
+
 ## 🚀 Uso
 
 ### 1. Iniciar el servidor MCP
@@ -98,6 +125,22 @@ python mcp_server.py --sse
 - `terminal_get_system_info`: Información del sistema
 - `terminal_health_check_service`: Health check con formato de terminal
 
+#### Herramientas de Testing con Docker
+
+- `docker_test_execute`: Ejecuta tests básicos con docker exec
+- `docker_test_pytest_coverage`: Tests con coverage
+- `docker_test_specific_file`: Tests de archivo específico
+- `docker_test_with_markers`: Tests con marcadores
+- `docker_test_parallel`: Tests en paralelo
+- `docker_test_html_report`: Genera reportes HTML
+- `docker_test_junit_report`: Genera reportes JUnit XML
+
+#### Orquestador de Testing
+
+- `audit_orchestrator_test_suite`: Suite de tests via orquestador
+- `audit_orchestrator_tests_with_coverage`: Tests con coverage via orquestador
+- `audit_orchestrator_comprehensive_audit`: Auditoría completa (health + tests)
+
 ### 3. Ejemplos de Uso
 
 #### Health Check Básico
@@ -124,6 +167,39 @@ audit_result = await audit_repo_run()
 
 # Ejecutar auditoría con archivo personalizado
 audit_result = await audit_repo_run("custom_audit.yaml")
+```
+
+#### Testing con Docker Exec
+```python
+# Ejecutar tests básicos
+result = await docker_test_execute(
+    service_name="mcp-service",
+    test_command="pytest",
+    additional_args="-v"
+)
+print(f"Estado: {result['status']}")
+
+# Tests con coverage
+result = await docker_test_pytest_coverage(
+    service_name="mcp-service",
+    coverage_args="--cov=src --cov-report=html"
+)
+print(f"Coverage generado: {result['success']}")
+
+# Tests de archivo específico
+result = await docker_test_specific_file(
+    service_name="mcp-service",
+    test_file="tests/test_health.py",
+    additional_args="-v"
+)
+print(f"Archivo ejecutado: {result['success']}")
+
+# Auditoría completa con health checks y tests
+result = await audit_orchestrator_comprehensive_audit(
+    service_name="mcp-service",
+    include_tests=True
+)
+print(f"Estado general: {result['overall_status']}")
 ```
 
 #### Comandos de Terminal

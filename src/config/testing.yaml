@@ -1,0 +1,60 @@
+# Configuración de testing para el MCP
+# Este archivo define cómo se ejecutan los tests usando docker exec
+
+# Configuración de Docker
+docker:
+  default_service: "mcp-service"
+  network: "mcp-network"
+  timeout_seconds: 300
+
+# Configuración de pytest
+pytest:
+  default_command: "pytest"
+  coverage_args: "--cov=src --cov-report=html --cov-report=term-missing"
+  verbose_output: true
+  parallel_workers: 4
+  
+  # Marcadores de test
+  markers:
+    - "unit"
+    - "integration"
+    - "slow"
+    - "fast"
+    - "health"
+    - "audit"
+
+# Configuración de reportes
+reports:
+  html_dir: "test_reports"
+  junit_file: "junit.xml"
+  coverage_dir: "htmlcov"
+  
+# Configuración de servicios para testing
+services:
+  mcp_service:
+    name: "mcp-service"
+    container_name: "mcp-service"
+    test_path: "/app/tests"
+    pytest_config: "pytest.ini"
+    
+  # Puedes agregar más servicios aquí
+  # otro_servicio:
+  #   name: "otro-servicio"
+  #   container_name: "otro-servicio"
+  #   test_path: "/app/tests"
+  #   pytest_config: "pytest.ini"
+
+# Configuración de health checks antes de testing
+health_check:
+  enabled: true
+  endpoints:
+    readiness: "/readiness"
+    liveness: "/liveness"
+  timeout_ms: 5000
+
+# Configuración de notificaciones
+notifications:
+  enabled: false
+  channels: ["console", "log"]
+  on_failure: true
+  on_success: false 

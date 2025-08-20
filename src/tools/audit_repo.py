@@ -4,8 +4,9 @@ Orquestador de auditorías de health check
 import yaml
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from .health import comprehensive_health_check
+from .testing_tools import TestingTools
 from src.core.models import HealthSummary, CheckResult, Status
 from datetime import datetime
 
@@ -110,6 +111,158 @@ class AuditOrchestrator:
         
         return summary
     
+    async def run_test_suite(self, service_name: str, test_type: str = "pytest", additional_args: str = "") -> Dict[str, Any]:
+        """
+        Ejecuta la suite de tests para un servicio usando docker exec
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker
+            test_type: Tipo de test a ejecutar (default: "pytest")
+            additional_args: Argumentos adicionales para los tests
+        
+        Returns:
+            Resultado de la ejecución de tests
+        """
+        try:
+            result = await TestingTools.execute_docker_test(
+                service_name=service_name,
+                test_command=test_type,
+                additional_args=additional_args
+            )
+            
+            return {
+                "service_name": service_name,
+                "test_type": test_type,
+                "timestamp": datetime.now().isoformat(),
+                **result
+            }
+            
+        except Exception as e:
+            return {
+                "service_name": service_name,
+                "test_type": test_type,
+                "timestamp": datetime.now().isoformat(),
+                "success": False,
+                "status": "error",
+                "error": str(e)
+            }
+    
+    async def run_tests_with_coverage(self, service_name: str, coverage_args: str = "--cov=src --cov-report=html") -> Dict[str, Any]:
+        """
+        Ejecuta tests con coverage para un servicio usando docker exec
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker
+            coverage_args: Argumentos de coverage
+        
+        Returns:
+            Resultado de la ejecución de tests con coverage
+        """
+        try:
+            result = await TestingTools.run_pytest_with_coverage(
+                service_name=service_name,
+                coverage_args=coverage_args
+            )
+            
+            return {
+                "service_name": service_name,
+                "test_type": "pytest_with_coverage",
+                "timestamp": datetime.now().isoformat(),
+                **result
+            }
+            
+        except Exception as e:
+            return {
+                "service_name": service_name,
+                "test_type": "pytest_with_coverage",
+                "timestamp": datetime.now().isoformat(),
+                "success": False,
+                "status": "error",
+                "error": str(e)
+            }
+    
+    async def run_comprehensive_audit(self, service_name: str, include_tests: bool = True) -> Dict[str, Any]:
+        """
+        Ejecuta una auditoría completa incluyendo health checks y tests
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker
+            include_tests: Si incluir tests en la auditoría
+        
+        Returns:
+            Resultado completo de la auditoría
+        """
+        audit_results = {}
+        
+        # Health check
+        try:
+            health_result = await self.run_single_check(service_name, f"http://{service_name}:8000")
+            audit_results["health_check"] = health_result
+        except Exception as e:
+            audit_results["health_check"] = {
+                "error": str(e),
+                "status": "failed"
+            }
+        
+        # Tests (si están habilitados)
+        if include_tests:
+            try:
+                test_result = await self.run_test_suite(service_name)
+                audit_results["test_suite"] = test_result
+            except Exception as e:
+                audit_results["test_suite"] = {
+                    "error": str(e),
+                    "status": "failed"
+                }
+        
+        # Resumen general
+        overall_status = "healthy"
+        if audit_results.get("health_check", {}).get("overall_status") != "healthy":
+            overall_status = "unhealthy"
+        if audit_results.get("test_suite", {}).get("status") == "failed":
+            overall_status = "tests_failed"
+        
+        return {
+            "service_name": service_name,
+            "overall_status": overall_status,
+            "timestamp": datetime.now().isoformat(),
+            "audit_results": audit_results,
+            "summary": {
+                "health_status": audit_results.get("health_check", {}).get("overall_status", "unknown"),
+                "test_status": audit_results.get("test_suite", {}).get("status", "unknown"),
+                "recommendations": self._generate_recommendations(audit_results)
+            }
+        }
+    
+    def _generate_recommendations(self, audit_results: Dict[str, Any]) -> List[str]:
+        """
+        Genera recomendaciones basadas en los resultados de la auditoría
+        
+        Args:
+            audit_results: Resultados de la auditoría
+        
+        Returns:
+            Lista de recomendaciones
+        """
+        recommendations = []
+        
+        # Health check recommendations
+        health_check = audit_results.get("health_check", {})
+        if health_check.get("overall_status") != "healthy":
+            recommendations.append("Revisar la salud del servicio - verificar endpoints de readiness y liveness")
+        
+        # Test recommendations
+        test_suite = audit_results.get("test_suite", {})
+        if test_suite.get("status") == "failed":
+            recommendations.append("Revisar la suite de tests - verificar que todos los tests pasen")
+        elif test_suite.get("status") == "passed":
+            recommendations.append("Tests pasando correctamente - considerar agregar más tests para mejorar cobertura")
+        
+        if not recommendations:
+            recommendations.append("Servicio funcionando correctamente - continuar monitoreando")
+        
+        return recommendations
+    
     async def run_from_config(self) -> Dict[str, Any]:
         """
         Ejecuta health checks usando la configuración del archivo YAML
@@ -187,5 +340,4 @@ async def run_audit(config_path: Optional[str] = None) -> Dict[str, Any]:
         Resultados de la auditoría
     """
     orchestrator = AuditOrchestrator(config_path)
-    results = await orchestrator.run_from_config()
-    return results 
+    return await orchestrator.run_from_config() 

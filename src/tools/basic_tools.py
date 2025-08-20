@@ -6,6 +6,7 @@ from .health import readiness_check, liveness_check, comprehensive_health_check
 from .audit_repo import run_audit
 from .terminal_tools import TerminalTools
 from .endpoint_detector import detect_service_endpoints, auto_health_check
+from .testing_tools import TestingTools, run_docker_test, run_pytest_coverage, run_specific_test
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -91,6 +92,55 @@ def register_tools(mcp):
             Resultados de la auditoría con reporte formateado
         """
         return await run_audit(config_path)
+    
+    @mcp.tool()
+    async def audit_orchestrator_test_suite(service_name: str, test_type: str = "pytest", additional_args: str = "") -> dict:
+        """
+        Ejecuta la suite de tests para un servicio usando el orquestador con formato docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            test_type: Tipo de test a ejecutar (default: "pytest")
+            additional_args: Argumentos adicionales para los tests
+        
+        Returns:
+            Resultado de la ejecución de tests usando docker exec
+        """
+        from .audit_repo import AuditOrchestrator
+        orchestrator = AuditOrchestrator()
+        return await orchestrator.run_test_suite(service_name, test_type, additional_args)
+    
+    @mcp.tool()
+    async def audit_orchestrator_tests_with_coverage(service_name: str, coverage_args: str = "--cov=src --cov-report=html") -> dict:
+        """
+        Ejecuta tests con coverage para un servicio usando el orquestador con formato docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            coverage_args: Argumentos de coverage
+        
+        Returns:
+            Resultado de la ejecución de tests con coverage usando docker exec
+        """
+        from .audit_repo import AuditOrchestrator
+        orchestrator = AuditOrchestrator()
+        return await orchestrator.run_tests_with_coverage(service_name, coverage_args)
+    
+    @mcp.tool()
+    async def audit_orchestrator_comprehensive_audit(service_name: str, include_tests: bool = True) -> dict:
+        """
+        Ejecuta una auditoría completa incluyendo health checks y tests usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            include_tests: Si incluir tests en la auditoría (default: True)
+        
+        Returns:
+            Resultado completo de la auditoría con health checks y tests
+        """
+        from .audit_repo import AuditOrchestrator
+        orchestrator = AuditOrchestrator()
+        return await orchestrator.run_comprehensive_audit(service_name, include_tests)
     
     @mcp.tool()
     async def terminal_execute_command(command: str, cwd: str = None) -> dict:
@@ -221,4 +271,138 @@ def register_tools(mcp):
                 "recommendations": detection["recommendations"]
             }
         }
+    
+    @mcp.tool()
+    async def docker_test_execute(service_name: str, test_command: str = "pytest", additional_args: str = "") -> dict:
+        """
+        Ejecuta tests en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            test_command: Comando de testing a ejecutar (default: "pytest")
+            additional_args: Argumentos adicionales para el comando de testing
+        
+        Returns:
+            Resultado de la ejecución de tests con formato docker exec
+        """
+        return await run_docker_test(service_name, test_command, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_pytest_coverage(service_name: str, coverage_args: str = "--cov=src --cov-report=html") -> dict:
+        """
+        Ejecuta pytest con coverage en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            coverage_args: Argumentos de coverage adicionales
+        
+        Returns:
+            Resultado de la ejecución con coverage usando docker exec
+        """
+        return await run_pytest_coverage(service_name, coverage_args)
+    
+    @mcp.tool()
+    async def docker_test_specific_file(service_name: str, test_file: str, additional_args: str = "") -> dict:
+        """
+        Ejecuta un archivo de test específico en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            test_file: Ruta al archivo de test (ej: "tests/test_health.py")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución del test específico usando docker exec
+        """
+        return await run_specific_test(service_name, test_file, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_with_markers(service_name: str, marker: str, additional_args: str = "") -> dict:
+        """
+        Ejecuta tests con un marcador específico en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            marker: Marcador de pytest (ej: "slow", "integration", "unit")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución de tests con marcador usando docker exec
+        """
+        return await TestingTools.run_test_with_markers(service_name, marker, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_parallel(service_name: str, num_workers: int = 4, additional_args: str = "") -> dict:
+        """
+        Ejecuta tests en paralelo usando pytest-xdist en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            num_workers: Número de workers para ejecución paralela (default: 4)
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución de tests paralelos usando docker exec
+        """
+        return await TestingTools.run_parallel_tests(service_name, num_workers, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_verbose(service_name: str, test_command: str = "pytest", additional_args: str = "") -> dict:
+        """
+        Ejecuta tests con salida verbose en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            test_command: Comando de testing a ejecutar (default: "pytest")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución con salida verbose usando docker exec
+        """
+        return await TestingTools.run_tests_with_verbose_output(service_name, test_command, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_html_report(service_name: str, report_dir: str = "test_reports", additional_args: str = "") -> dict:
+        """
+        Ejecuta tests generando un reporte HTML en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            report_dir: Directorio para el reporte HTML (default: "test_reports")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución con reporte HTML usando docker exec
+        """
+        return await TestingTools.run_tests_with_html_report(service_name, report_dir, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_junit_report(service_name: str, report_file: str = "junit.xml", additional_args: str = "") -> dict:
+        """
+        Ejecuta tests generando un reporte JUnit XML en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            report_file: Archivo de reporte JUnit XML (default: "junit.xml")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución con reporte JUnit XML usando docker exec
+        """
+        return await TestingTools.run_tests_with_junit_report(service_name, report_file, additional_args)
+    
+    @mcp.tool()
+    async def docker_test_custom_command(service_name: str, test_command: str, additional_args: str = "") -> dict:
+        """
+        Ejecuta un comando de testing personalizado en un contenedor Docker usando docker exec.
+        
+        Args:
+            service_name: Nombre del servicio/contenedor Docker (ej: "mcp-service")
+            test_command: Comando de testing personalizado (ej: "python -m pytest", "tox")
+            additional_args: Argumentos adicionales
+        
+        Returns:
+            Resultado de la ejecución del comando personalizado usando docker exec
+        """
+        return await TestingTools.run_custom_test_command(service_name, test_command, additional_args)
     
