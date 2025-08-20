@@ -7,6 +7,7 @@ from .audit_repo import run_audit
 from .terminal_tools import TerminalTools
 from .endpoint_detector import detect_service_endpoints, auto_health_check
 from .testing_tools import TestingTools, run_docker_test, run_pytest_coverage, run_specific_test
+from .api_analyzer import analyze_api_service, generate_api_docs
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -405,4 +406,82 @@ def register_tools(mcp):
             Resultado de la ejecución del comando personalizado usando docker exec
         """
         return await TestingTools.run_custom_test_command(service_name, test_command, additional_args)
+    
+    @mcp.tool()
+    async def api_analyze_service(base_url: str, swagger_path: str = None, timeout_ms: int = 10000) -> dict:
+        """
+        Analiza una API completa desde una URL base, detectando y entendiendo su estructura.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            swagger_path: Ruta específica del Swagger (opcional, se detecta automáticamente)
+            timeout_ms: Timeout en milisegundos para la detección y análisis (default: 10000)
+        
+        Returns:
+            Análisis completo de la API incluyendo endpoints, modelos, tags y estadísticas
+        """
+        return await analyze_api_service(base_url, swagger_path, timeout_ms)
+    
+    @mcp.tool()
+    async def api_generate_documentation(base_url: str, swagger_path: str = None, timeout_ms: int = 10000) -> dict:
+        """
+        Genera documentación inteligente y completa de una API.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            swagger_path: Ruta específica del Swagger (opcional, se detecta automáticamente)
+            timeout_ms: Timeout en milisegundos para la detección y análisis (default: 10000)
+        
+        Returns:
+            Documentación completa con ejemplos de uso, patrones identificados y recomendaciones
+        """
+        return await generate_api_docs(base_url, swagger_path, timeout_ms)
+    
+    @mcp.tool()
+    async def api_comprehensive_audit(base_url: str, swagger_path: str = None, timeout_ms: int = 10000) -> dict:
+        """
+        Realiza una auditoría completa de una API: análisis + documentación + health check.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            swagger_path: Ruta específica del Swagger (opcional, se detecta automáticamente)
+            timeout_ms: Timeout en milisegundos (default: 10000)
+        
+        Returns:
+            Auditoría completa con análisis de API, documentación y verificación de salud
+        """
+        # Primero analizar la API
+        api_analysis = await analyze_api_service(base_url, swagger_path, timeout_ms)
+        
+        if not api_analysis["success"]:
+            return {
+                "success": False,
+                "error": "No se pudo analizar la API",
+                "details": api_analysis
+            }
+        
+        # Generar documentación
+        api_docs = await generate_api_docs(base_url, swagger_path, timeout_ms)
+        
+        # Realizar health check
+        health_check = await auto_health_check(base_url, timeout_ms)
+        
+        return {
+            "success": True,
+            "api_url": base_url,
+            "timestamp": asyncio.get_event_loop().time(),
+            "api_analysis": api_analysis,
+            "api_documentation": api_docs,
+            "health_check": health_check,
+            "comprehensive_summary": {
+                "api_title": api_analysis["analysis"]["info"]["title"],
+                "api_version": api_analysis["analysis"]["info"]["version"],
+                "total_endpoints": api_analysis["analysis"]["statistics"]["total_endpoints"],
+                "total_models": api_analysis["analysis"]["statistics"]["total_models"],
+                "complexity_level": api_analysis["analysis"]["statistics"]["openapi_version"],
+                "has_authentication": api_analysis["analysis"]["security"]["requires_authentication"],
+                "health_status": health_check.get("health_check", {}).get("overall_status", "unknown") if health_check.get("success") else "failed",
+                "recommendations": api_analysis["analysis"].get("recommendations", [])
+            }
+        }
     
