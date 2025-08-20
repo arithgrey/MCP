@@ -1,9 +1,11 @@
 """
 Herramientas básicas para el servidor MCP
 """
+import asyncio
 from .health import readiness_check, liveness_check, comprehensive_health_check
 from .audit_repo import run_audit
 from .terminal_tools import TerminalTools
+from .endpoint_detector import detect_service_endpoints, auto_health_check
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -161,4 +163,62 @@ def register_tools(mcp):
         """
         return await TerminalTools.get_system_info()
     
+    @mcp.tool()
+    async def auto_detect_endpoints(base_url: str, timeout_ms: int = 5000) -> dict:
+        """
+        Detecta automáticamente los endpoints de health check y Swagger de un servicio.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            timeout_ms: Timeout en milisegundos para cada endpoint (default: 5000)
+        
+        Returns:
+            Resultado completo de la detección con endpoints encontrados
+        """
+        return await detect_service_endpoints(base_url, timeout_ms)
+    
+    @mcp.tool()
+    async def auto_health_check_service(base_url: str, timeout_ms: int = 5000) -> dict:
+        """
+        Realiza un health check automático usando los endpoints detectados del servicio.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            timeout_ms: Timeout en milisegundos para la detección y health check (default: 5000)
+        
+        Returns:
+            Resultado del health check usando los mejores endpoints detectados
+        """
+        return await auto_health_check(base_url, timeout_ms)
+    
+    @mcp.tool()
+    async def smart_service_audit(base_url: str, timeout_ms: int = 5000) -> dict:
+        """
+        Auditoría inteligente completa de un servicio: detecta endpoints y realiza health check.
+        
+        Args:
+            base_url: URL base del servicio (ej: "https://api.miservicio.com")
+            timeout_ms: Timeout en milisegundos (default: 5000)
+        
+        Returns:
+            Auditoría completa con detección de endpoints y health check
+        """
+        # Primero detectar endpoints
+        detection = await detect_service_endpoints(base_url, timeout_ms)
+        
+        # Luego realizar health check con los endpoints detectados
+        health_check = await auto_health_check(base_url, timeout_ms)
+        
+        return {
+            "service_url": base_url,
+            "timestamp": asyncio.get_event_loop().time(),
+            "detection": detection,
+            "health_check": health_check,
+            "summary": {
+                "has_health_endpoints": detection["health"]["summary"]["total_found"] > 0,
+                "has_swagger": detection["swagger"]["summary"]["has_swagger"],
+                "health_status": health_check.get("health_check", {}).get("overall_status", "unknown") if health_check.get("success") else "failed",
+                "recommendations": detection["recommendations"]
+            }
+        }
     
