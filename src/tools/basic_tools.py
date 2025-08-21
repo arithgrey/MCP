@@ -8,6 +8,7 @@ from .terminal_tools import TerminalTools
 from .endpoint_detector import detect_service_endpoints, auto_health_check
 from .testing_tools import TestingTools, run_docker_test, run_pytest_coverage, run_specific_test
 from .api_analyzer import analyze_api_service, generate_api_docs
+from .structure_inspector import inspect_microservice_structure, inspect_repository_structure
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -484,4 +485,72 @@ def register_tools(mcp):
                 "recommendations": api_analysis["analysis"].get("recommendations", [])
             }
         }
+    
+    @mcp.tool()
+    async def base_structure_inspector_microservice(service_path: str = None, base_path: str = ".", template_path: str = None) -> dict:
+        """
+        Inspecciona la estructura base de microservicios siguiendo estándares técnicos mínimos.
+        
+        Args:
+            service_path: Ruta específica al microservicio (opcional, si no se proporciona se audita todo el repositorio)
+            base_path: Ruta base del repositorio (default: ".")
+            template_path: Ruta opcional al archivo de plantilla de configuración
+        
+        Returns:
+            Reporte completo de la estructura del microservicio o repositorio
+        """
+        try:
+            if service_path:
+                # Inspección de un microservicio específico
+                result = inspect_microservice_structure(service_path, base_path, template_path)
+                return {
+                    "success": True,
+                    "type": "microservice",
+                    "template_used": result.get("template_info", "default"),
+                    "data": result.dict()
+                }
+            else:
+                # Auditoría completa del repositorio
+                result = inspect_repository_structure(base_path, None, template_path)
+                return {
+                    "success": True,
+                    "type": "repository",
+                    "template_used": result.get("template_info", "default"),
+                    "data": result.dict()
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "type": "error"
+            }
+    
+    @mcp.tool()
+    async def get_structure_template_info(template_path: str = None) -> dict:
+        """
+        Obtiene información sobre la plantilla de estructura actual.
+        
+        Args:
+            template_path: Ruta opcional al archivo de plantilla
+        
+        Returns:
+            Información de la plantilla de estructura
+        """
+        try:
+            from .template_loader import TemplateLoader
+            
+            loader = TemplateLoader(template_path)
+            template_info = loader.get_template_info()
+            
+            return {
+                "success": True,
+                "template_info": template_info,
+                "template_path": str(loader.template_path)
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "type": "error"
+            }
     

@@ -1,0 +1,225 @@
+# Plantilla de configuración para Base Structure Inspector Microservice
+# Permite personalizar qué archivos analizar y qué criterios aplicar
+
+# Plantilla por defecto - Estándar mínimo de microservicios
+default:
+  name: "Estándar Mínimo de Microservicios"
+  description: "Verificación de estructura básica obligatoria para microservicios"
+  
+  # Archivos obligatorios que deben existir
+  required_files:
+    - name: "Dockerfile"
+      description: "Archivo de containerización"
+      required: true
+      weight: 20
+    
+    - name: "docker-compose.yml"
+      description: "Archivo de orquestación"
+      required: true
+      weight: 20
+    
+    - name: ".gitignore"
+      description: "Archivo de exclusión de Git"
+      required: true
+      weight: 15
+    
+    - name: "tests/"
+      description: "Directorio de tests"
+      required: true
+      weight: 15
+      type: "directory"
+      must_contain: ["*.py"]
+    
+    - name: "README.md"
+      description: "Documentación del proyecto"
+      required: false
+      weight: 10
+    
+    - name: "requirements.txt"
+      description: "Dependencias de Python"
+      required: false
+      weight: 10
+
+  # Criterios de calidad para Dockerfile
+  dockerfile_quality:
+    patterns:
+      - name: "expose_port"
+        regex: "EXPOSE\\s+\\d+"
+        description: "Puerto expuesto correctamente"
+        weight: 5
+        required: false
+        
+      - name: "avoid_copy_all"
+        regex: "COPY\\s+\\.\\s+\\."
+        description: "Evita COPY . . sin .dockerignore"
+        weight: -10
+        required: false
+        warning: "uses COPY . . without .dockerignore"
+        
+      - name: "avoid_unnecessary_tools"
+        regex: "(apt-get|yum|apk)\\s+install.*(vim|nano|curl|wget)"
+        description: "No instala herramientas innecesarias"
+        weight: -5
+        required: false
+        warning: "installs unnecessary tools"
+        
+      - name: "use_slim_base"
+        regex: "FROM\\s+.*:.*-slim"
+        description: "Usa imagen base slim"
+        weight: 5
+        required: false
+        
+      - name: "multi_stage_build"
+        regex: "FROM\\s+.*\\s+AS\\s+\\w+"
+        description: "Usa multi-stage build"
+        weight: 10
+        required: false
+
+  # Criterios de calidad para docker-compose.yml
+  compose_quality:
+    patterns:
+      - name: "restart_policy"
+        regex: "restart:\\s*(unless-stopped|always|on-failure)"
+        description: "Política de reinicio definida"
+        weight: 5
+        required: false
+        warning: "no restart policy"
+        
+      - name: "volumes_defined"
+        regex: "volumes:"
+        description: "Volúmenes definidos"
+        weight: 5
+        required: false
+        warning: "no volumes defined"
+        
+      - name: "networks_defined"
+        regex: "networks:"
+        description: "Redes definidas"
+        weight: 5
+        required: false
+        warning: "no networks defined"
+        
+      - name: "depends_on"
+        regex: "depends_on:"
+        description: "Dependencias definidas"
+        weight: 5
+        required: false
+        warning: "no depends_on defined"
+        
+      - name: "environment_vars"
+        regex: "environment:"
+        description: "Variables de entorno definidas"
+        weight: 3
+        required: false
+        
+      - name: "health_check"
+        regex: "healthcheck:"
+        description: "Health check configurado"
+        weight: 8
+        required: false
+
+  # Criterios de calidad para .gitignore
+  gitignore_quality:
+    patterns:
+      - name: "env_files"
+        content: ".env"
+        description: "Archivos de entorno"
+        weight: 3
+        required: false
+        warning: "missing .env"
+        
+      - name: "python_cache"
+        content: "__pycache__/"
+        description: "Cache de Python"
+        weight: 3
+        required: false
+        warning: "missing __pycache__/"
+        
+      - name: "python_compiled"
+        content: "*.pyc"
+        description: "Archivos compilados de Python"
+        weight: 3
+        required: false
+        warning: "missing *.pyc"
+        
+      - name: "node_modules"
+        content: "node_modules/"
+        description: "Dependencias de Node.js"
+        weight: 2
+        required: false
+        warning: "missing node_modules/"
+        
+      - name: "build_dirs"
+        content: "build/"
+        description: "Directorios de build"
+        weight: 2
+        required: false
+        warning: "missing build/"
+        
+      - name: "dist_dirs"
+        content: "dist/"
+        description: "Directorios de distribución"
+        weight: 2
+        required: false
+        warning: "missing dist/"
+        
+      - name: "pytest_cache"
+        content: ".pytest_cache/"
+        description: "Cache de pytest"
+        weight: 2
+        required: false
+        warning: "missing .pytest_cache/"
+        
+      - name: "log_files"
+        content: "*.log"
+        description: "Archivos de log"
+        weight: 2
+        required: false
+        warning: "missing *.log"
+
+  # Criterios de calidad para tests
+  tests_quality:
+    patterns:
+      - name: "test_naming_convention"
+        regex: "test_.*\\.py$|.*_test\\.py$"
+        description: "Convención de nombres de tests"
+        weight: 5
+        required: false
+        
+      - name: "test_coverage_file"
+        content: ".coveragerc"
+        description: "Configuración de coverage"
+        weight: 3
+        required: false
+        
+      - name: "pytest_config"
+        content: "pytest.ini"
+        description: "Configuración de pytest"
+        weight: 3
+        required: false
+
+# Configuración global de scoring
+scoring:
+  # Pesos base para archivos requeridos
+  base_weights:
+    required_file: 20
+    optional_file: 10
+    required_directory: 15
+    optional_directory: 8
+  
+  # Umbrales de estado
+  thresholds:
+    complete: 80
+    incomplete: 50
+    poor: 0
+  
+  # Penalizaciones por warnings
+  warning_penalty: 2
+  
+  # Bonificaciones por características avanzadas
+  bonus_features:
+    multi_stage_build: 10
+    health_check: 8
+    persistent_volumes: 10
+    test_coverage: 5
+    documentation: 5 
