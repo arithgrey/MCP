@@ -4,7 +4,8 @@ Cargador de plantillas de configuración para el inspector de estructura
 import yaml
 from pathlib import Path
 from typing import Optional, Dict, Any
-from ..core.template_models import TemplateConfig, StructureTemplate, ScoringConfig
+from src.core.template_models import TemplateConfig, StructureTemplate, ScoringConfig
+from src.core.models import FilePreventionRule, FileCreationPolicy
 
 
 class TemplateLoader:
@@ -27,8 +28,32 @@ class TemplateLoader:
             with open(self.template_path, 'r', encoding='utf-8') as file:
                 data = yaml.safe_load(file)
             
-            # Cargar plantilla por defecto
+            # Cargar configuración de prevención de archivos primero
+            file_prevention_data = data.get("file_prevention", {})
+            file_prevention = None
+            if file_prevention_data:
+                from src.core.models import FilePreventionRule, FileCreationPolicy, PathPreventionRule
+                
+                # Crear reglas de prevención
+                makefiles_data = file_prevention_data.get("makefiles", {})
+                shell_scripts_data = file_prevention_data.get("shell_scripts", {})
+                path_prevention_data = file_prevention_data.get("path_prevention", {})
+                
+                makefiles_rule = FilePreventionRule(**makefiles_data)
+                shell_scripts_rule = FilePreventionRule(**shell_scripts_data)
+                path_prevention_rule = PathPreventionRule(**path_prevention_data)
+                
+                file_prevention = FileCreationPolicy(
+                    makefiles=makefiles_rule,
+                    shell_scripts=shell_scripts_rule,
+                    path_prevention=path_prevention_rule,
+                    other_restricted=file_prevention_data.get("other_restricted", [])
+                )
+            
+            # Cargar plantilla por defecto con file_prevention
             default_data = data.get("default", {})
+            if file_prevention:
+                default_data["file_prevention"] = file_prevention
             default_template = StructureTemplate(**default_data)
             
             # Cargar configuración de scoring
@@ -37,7 +62,8 @@ class TemplateLoader:
             
             return TemplateConfig(
                 default=default_template,
-                scoring=scoring
+                scoring=scoring,
+                file_prevention=file_prevention
             )
             
         except Exception as e:
@@ -46,7 +72,70 @@ class TemplateLoader:
     
     def _create_default_config(self) -> TemplateConfig:
         """Crea configuración por defecto si no se pueden cargar las plantillas"""
-        from ..core.template_models import RequiredFile, FileQuality, QualityPattern
+        from src.core.template_models import RequiredFile, FileQuality, QualityPattern
+        
+        # Reglas de prevención por defecto
+        makefile_prevention = FilePreventionRule(
+            file_type="makefile",
+            enabled=True,
+            blocked_patterns=["Makefile", "makefile", "GNUmakefile", "*.mk"],
+            allowed_exceptions=[],
+            django_microservice_patterns=[],
+            error_message="❌ NO SE PERMITEN MAKEFILES en este proyecto",
+            alternatives=[
+                "docker-compose.yml para orquestación de servicios",
+                "scripts/ para tareas personalizadas",
+                "pyproject.toml para comandos Python"
+            ]
+        )
+        
+        shell_script_prevention = FilePreventionRule(
+            file_type="shell_script",
+            enabled=True,
+            blocked_patterns=["*.sh"],
+            allowed_exceptions=["entrypoint.sh"],
+            django_microservice_patterns=[
+                "manage.py", "app/settings.py", "app/wsgi.py", "app/asgi.py",
+                "settings.py", "wsgi.py", "asgi.py"
+            ],
+            error_message="❌ NO SE PERMITEN SCRIPTS .SH excepto entrypoint.sh para microservicios Django",
+            alternatives=[
+                "Dockerfile para configuración de contenedor",
+                "docker-compose.yml para orquestación",
+                "requirements.txt para dependencias Python"
+            ]
+        )
+        
+        # Regla de prevención de rutas relativas problemáticas
+        from src.core.models import PathPreventionRule
+        path_prevention = PathPreventionRule(
+            rule_type="relative_path",
+            enabled=True,
+            blocked_patterns=[
+                "../", "./", "*/../*", "*/./*",
+                "from ..", "from .", "import ..", "import ."
+            ],
+            allowed_exceptions=[
+                "from . import",  # Imports relativos válidos dentro del mismo paquete
+                "from .. import"  # Imports relativos válidos hacia paquetes padre
+            ],
+            error_message="❌ NO SE PERMITEN RUTAS RELATIVAS PROBLEMÁTICAS que salgan del contexto del proyecto",
+            alternatives=[
+                "Usa rutas absolutas desde la raíz del proyecto",
+                "Usa imports absolutos: from src.tools import",
+                "Usa variables de entorno para rutas dinámicas",
+                "Usa pathlib.Path para manejo robusto de rutas",
+                "Define rutas base en configuración centralizada"
+            ],
+            severity="critical"
+        )
+        
+        file_prevention = FileCreationPolicy(
+            makefiles=makefile_prevention,
+            shell_scripts=shell_script_prevention,
+            path_prevention=path_prevention,
+            other_restricted=[]
+        )
         
         # Plantilla por defecto
         default_template = StructureTemplate(
@@ -98,7 +187,8 @@ class TemplateLoader:
                         warning="uses COPY . . without .dockerignore"
                     )
                 ]
-            )
+            ),
+            file_prevention=file_prevention
         )
         
         # Configuración de scoring por defecto

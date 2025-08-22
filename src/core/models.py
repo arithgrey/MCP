@@ -158,3 +158,43 @@ class ArchitectureAuditReport(BaseModel):
     
     # Recomendaciones prioritarias
     priority_recommendations: List[str]
+
+
+class FilePreventionRule(BaseModel):
+    """Regla de prevención para tipos de archivos"""
+    file_type: str  # "makefile", "shell_script", "other"
+    enabled: bool = True
+    blocked_patterns: List[str]
+    allowed_exceptions: List[str] = []
+    django_microservice_patterns: List[str] = []
+    error_message: str
+    alternatives: List[str] = []
+
+
+class PathPreventionRule(BaseModel):
+    """Regla de prevención para rutas problemáticas"""
+    rule_type: str  # "relative_path", "parent_directory", "context_escape"
+    enabled: bool = True
+    blocked_patterns: List[str]
+    allowed_exceptions: List[str] = []
+    error_message: str
+    alternatives: List[str] = []
+    severity: str = "high"  # "low", "medium", "high", "critical"
+
+
+class FileCreationPolicy(BaseModel):
+    """Política de creación de archivos"""
+    makefiles: FilePreventionRule
+    shell_scripts: FilePreventionRule
+    path_prevention: PathPreventionRule
+    other_restricted: List[FilePreventionRule] = []
+
+
+class PreventionViolation(BaseModel):
+    """Violación de reglas de prevención de archivos"""
+    file_path: str
+    rule_type: str
+    error_message: str
+    alternatives: List[str]
+    timestamp: datetime = datetime.now()
+    severity: str = "high"  # "low", "medium", "high", "critical"
