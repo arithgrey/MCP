@@ -1,0 +1,29 @@
+endpoints:
+  base_url: "http://localhost:8080"
+  readiness: "/readiness"
+  liveness: "/liveness"
+
+thresholds:
+  http_latency_ms: 300
+  coverage_min: 0.80
+
+# Configuración adicional para múltiples servicios
+services:
+  local_service:
+    name: "Servicio Local"
+    base_url: "http://localhost:8080"
+    readiness: "/readiness"
+    liveness: "/liveness"
+  
+  # Puedes agregar más servicios aquí
+  # external_service:
+  #   name: "Servicio Externo"
+  #   base_url: "https://api.external.com"
+  #   readiness: "/health/ready"
+  #   liveness: "/health/live"
+
+# Configuración de alertas
+alerts:
+  enabled: true
+  max_consecutive_failures: 3
+  notification_channels: ["log", "console"] 

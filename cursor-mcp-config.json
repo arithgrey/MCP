@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "hola-mundo-mcp": {
-      "command": "python",
-      "args": ["/home/arithgrey/enid_service/services/MCP/run_server.py"],
+      "command": "docker",
+      "args": ["exec", "mcp-service", "python", "run_server.py"],
       "env": {
-        "PYTHONPATH": "/home/arithgrey/enid_service/services/MCP"
+        "MCP_PROXY_TOKEN": "test123"
       }
     }
   }

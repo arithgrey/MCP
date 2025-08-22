@@ -26,4 +26,4 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Configura el entrypoint para ejecutar el servidor MCP en modo SSE
-ENTRYPOINT ["python", "run_server.py", "--sse"]
+ENTRYPOINT ["python", "mcp_server.py", "--sse"]
