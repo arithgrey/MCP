@@ -13,7 +13,11 @@ from ..core.models import (
     StructureChecks, 
     ConfigQuality, 
     MicroserviceStructureReport,
-    RepositoryStructureAudit
+    RepositoryStructureAudit,
+    ArchitectureAnalysis,
+    ArchitecturePrinciple,
+    PrincipleViolation,
+    TODOAction
 )
 from .template_loader import TemplateLoader
 
@@ -558,3 +562,725 @@ def inspect_repository_structure(base_path: str = ".", service_paths: List[str] 
     """
     inspector = BaseStructureInspector(base_path, template_path)
     return inspector.inspect_repository(service_paths) 
+
+
+class AdvancedArchitectureInspector:
+    """Inspector avanzado de arquitectura para microservicios con perfil de arquitecto senior"""
+    
+    def __init__(self, base_path: str = "."):
+        self.base_path = Path(base_path)
+        
+        # Patrones para detección de violaciones
+        self.dry_patterns = {
+            "duplicate_functions": r"def\s+(\w+)\s*\([^)]*\):",
+            "duplicate_classes": r"class\s+(\w+)",
+            "duplicate_imports": r"from\s+(\w+)\s+import\s+(\w+)",
+            "duplicate_constants": r"(\w+)\s*=\s*['\"][^'\"]*['\"]",
+            "duplicate_config": r"(\w+):\s*['\"][^'\"]*['\"]"
+        }
+        
+        self.tdd_patterns = {
+            "test_files": r"test_.*\.py$|.*_test\.py$",
+            "test_methods": r"def\s+test_\w+",
+            "test_imports": r"import\s+pytest|from\s+pytest",
+            "test_config": r"pytest\.ini|pyproject\.toml|setup\.cfg"
+        }
+        
+        self.integration_patterns = {
+            "integration_test_files": r"test_.*integration.*\.py$|.*integration.*test\.py$",
+            "integration_markers": r"@pytest\.mark\.integration|@integration|@e2e",
+            "docker_compose_tests": r"docker-compose.*test|docker-compose.*integration",
+            "test_databases": r"test.*db|test.*database|test.*postgres|test.*mysql"
+        }
+        
+        self.faker_patterns = {
+            "faker_imports": r"from\s+faker\s+import|import\s+faker",
+            "faker_usage": r"Faker\(\)|faker\.",
+            "fake_data_generators": r"fake_|generate_|create_",
+            "test_fixtures": r"@pytest\.fixture|def\s+fake_|def\s+generate_"
+        }
+        
+        self.scalability_patterns = {
+            "async_await": r"async\s+def|await\s+",
+            "connection_pooling": r"pool|connection_pool|max_connections",
+            "caching": r"cache|redis|memcached|@lru_cache",
+            "load_balancing": r"load_balancer|round_robin|least_connections",
+            "horizontal_scaling": r"replicas|instances|scale|kubernetes|docker_swarm",
+            "microservices_patterns": r"service_discovery|api_gateway|circuit_breaker"
+        }
+    
+    def analyze_microservice_architecture(self, service_path: str) -> ArchitectureAnalysis:
+        """
+        Realiza un análisis completo de arquitectura del microservicio
+        
+        Args:
+            service_path: Ruta al microservicio
+            
+        Returns:
+            Análisis completo de arquitectura
+        """
+        full_path = self.base_path / service_path
+        
+        if not full_path.exists():
+            raise ValueError(f"El directorio {service_path} no existe")
+        
+        # Análisis de cada principio
+        drp_compliance = self._analyze_dry_compliance(full_path)
+        tdd_implementation = self._analyze_tdd_implementation(full_path)
+        integration_tests = self._analyze_integration_tests(full_path)
+        faker_data_usage = self._analyze_faker_usage(full_path)
+        scalability_features = self._analyze_scalability_features(full_path)
+        
+        # Detectar violaciones
+        violations = self._detect_architecture_violations(full_path)
+        
+        # Calcular métricas de violaciones
+        total_violations = len(violations)
+        critical_violations = len([v for v in violations if v.severity == "CRITICAL"])
+        high_violations = len([v for v in violations if v.severity == "HIGH"])
+        medium_violations = len([v for v in violations if v.severity == "MEDIUM"])
+        low_violations = len([v for v in violations if v.severity == "LOW"])
+        
+        # Calcular score de arquitectura
+        architecture_score = self._calculate_architecture_score(
+            drp_compliance, tdd_implementation, integration_tests, 
+            faker_data_usage, scalability_features, total_violations
+        )
+        
+        # Determinar estado de arquitectura
+        architecture_status = self._determine_architecture_status(architecture_score)
+        
+        return ArchitectureAnalysis(
+            drp_compliance=drp_compliance,
+            tdd_implementation=tdd_implementation,
+            integration_tests=integration_tests,
+            faker_data_usage=faker_data_usage,
+            scalability_features=scalability_features,
+            violations=violations,
+            total_violations=total_violations,
+            critical_violations=critical_violations,
+            high_violations=high_violations,
+            medium_violations=medium_violations,
+            low_violations=low_violations,
+            architecture_score=architecture_score,
+            architecture_status=architecture_status
+        )
+    
+    def _analyze_dry_compliance(self, service_path: Path) -> bool:
+        """Analiza el cumplimiento del principio DRY"""
+        python_files = list(service_path.rglob("*.py"))
+        
+        if not python_files:
+            return False
+        
+        # Buscar duplicaciones en funciones, clases, imports, etc.
+        function_names = []
+        class_names = []
+        import_patterns = []
+        
+        for py_file in python_files:
+            try:
+                content = py_file.read_text()
+                
+                # Extraer nombres de funciones
+                import re
+                functions = re.findall(self.dry_patterns["duplicate_functions"], content)
+                function_names.extend(functions)
+                
+                # Extraer nombres de clases
+                classes = re.findall(self.dry_patterns["duplicate_classes"], content)
+                class_names.extend(classes)
+                
+                # Extraer patrones de import
+                imports = re.findall(self.dry_patterns["duplicate_imports"], content)
+                import_patterns.extend(imports)
+                
+            except Exception:
+                continue
+        
+        # Verificar duplicaciones
+        duplicate_functions = len(function_names) != len(set(function_names))
+        duplicate_classes = len(class_names) != len(set(class_names))
+        duplicate_imports = len(import_patterns) != len(set(import_patterns))
+        
+        # Si hay duplicaciones significativas, no cumple DRY
+        return not (duplicate_functions or duplicate_classes or duplicate_imports)
+    
+    def _analyze_tdd_implementation(self, service_path: Path) -> bool:
+        """Analiza la implementación de TDD"""
+        # Verificar existencia de archivos de test
+        test_files = list(service_path.rglob("test_*.py")) + list(service_path.rglob("*_test.py"))
+        
+        if not test_files:
+            return False
+        
+        # Verificar que los tests estén en el directorio correcto
+        tests_dir = service_path / "tests"
+        has_tests_dir = tests_dir.exists() and tests_dir.is_dir()
+        
+        # Verificar configuración de pytest
+        pytest_config = (
+            (service_path / "pytest.ini").exists() or
+            (service_path / "pyproject.toml").exists() or
+            (service_path / "setup.cfg").exists()
+        )
+        
+        # Verificar que haya métodos de test
+        has_test_methods = False
+        for test_file in test_files[:3]:  # Revisar solo los primeros 3 archivos
+            try:
+                content = test_file.read_text()
+                if re.search(self.tdd_patterns["test_methods"], content):
+                    has_test_methods = True
+                    break
+            except Exception:
+                continue
+        
+        return has_tests_dir and pytest_config and has_test_methods
+    
+    def _analyze_integration_tests(self, service_path: Path) -> bool:
+        """Analiza la existencia de pruebas de integración"""
+        # Buscar archivos de test de integración
+        integration_test_files = list(service_path.rglob("*integration*.py"))
+        
+        # Buscar en directorio de tests
+        tests_dir = service_path / "tests"
+        if tests_dir.exists():
+            integration_test_files.extend(list(tests_dir.rglob("*integration*.py")))
+        
+        # Verificar marcadores de integración
+        has_integration_markers = False
+        for test_file in integration_test_files:
+            try:
+                content = test_file.read_text()
+                if re.search(self.integration_patterns["integration_markers"], content):
+                    has_integration_markers = True
+                    break
+            except Exception:
+                continue
+        
+        # Verificar configuración de docker-compose para tests
+        docker_compose_files = list(service_path.rglob("docker-compose*.yml"))
+        has_test_compose = False
+        for compose_file in docker_compose_files:
+            try:
+                content = compose_file.read_text()
+                if re.search(self.integration_patterns["docker_compose_tests"], content):
+                    has_test_compose = True
+                    break
+            except Exception:
+                continue
+        
+        return len(integration_test_files) > 0 or has_integration_markers or has_test_compose
+    
+    def _analyze_faker_usage(self, service_path: Path) -> bool:
+        """Analiza el uso de Faker para datos de prueba"""
+        python_files = list(service_path.rglob("*.py"))
+        
+        if not python_files:
+            return False
+        
+        # Verificar imports de Faker
+        has_faker_imports = False
+        has_faker_usage = False
+        
+        for py_file in python_files:
+            try:
+                content = py_file.read_text()
+                
+                if re.search(self.faker_patterns["faker_imports"], content):
+                    has_faker_imports = True
+                
+                if re.search(self.faker_patterns["faker_usage"], content):
+                    has_faker_usage = True
+                
+                if has_faker_imports and has_faker_usage:
+                    break
+                    
+            except Exception:
+                continue
+        
+        return has_faker_imports and has_faker_usage
+    
+    def _analyze_scalability_features(self, service_path: Path) -> bool:
+        """Analiza las características de escalabilidad"""
+        python_files = list(service_path.rglob("*.py"))
+        yaml_files = list(service_path.rglob("*.yml")) + list(service_path.rglob("*.yaml"))
+        
+        if not python_files and not yaml_files:
+            return False
+        
+        # Verificar características de escalabilidad en código Python
+        has_async = False
+        has_caching = False
+        has_pooling = False
+        
+        for py_file in python_files:
+            try:
+                content = py_file.read_text()
+                
+                if re.search(self.scalability_patterns["async_await"], content):
+                    has_async = True
+                
+                if re.search(self.scalability_patterns["caching"], content):
+                    has_caching = True
+                
+                if re.search(self.scalability_patterns["connection_pooling"], content):
+                    has_pooling = True
+                
+            except Exception:
+                continue
+        
+        # Verificar características en archivos de configuración
+        has_scaling_config = False
+        for yaml_file in yaml_files:
+            try:
+                content = yaml_file.read_text()
+                
+                if re.search(self.scalability_patterns["horizontal_scaling"], content):
+                    has_scaling_config = True
+                    break
+                    
+            except Exception:
+                continue
+        
+        # Se considera escalable si tiene al menos 2 características
+        scalability_features_count = sum([has_async, has_caching, has_pooling, has_scaling_config])
+        return scalability_features_count >= 2
+    
+    def _detect_architecture_violations(self, service_path: Path) -> List[PrincipleViolation]:
+        """Detecta violaciones de principios de arquitectura"""
+        violations = []
+        
+        # Violaciones de DRY
+        if not self._analyze_dry_compliance(service_path):
+            violations.append(PrincipleViolation(
+                principle=ArchitecturePrinciple.DRY,
+                severity="HIGH",
+                description="Detectadas duplicaciones en código que violan el principio DRY",
+                recommendation="Refactorizar código duplicado en funciones/clases reutilizables"
+            ))
+        
+        # Violaciones de TDD
+        if not self._analyze_tdd_implementation(service_path):
+            violations.append(PrincipleViolation(
+                principle=ArchitecturePrinciple.TDD,
+                severity="CRITICAL",
+                description="No se implementa Test Driven Development",
+                recommendation="Implementar TDD con estructura de tests adecuada y configuración de pytest"
+            ))
+        
+        # Violaciones de pruebas de integración
+        if not self._analyze_integration_tests(service_path):
+            violations.append(PrincipleViolation(
+                principle=ArchitecturePrinciple.INTEGRATION_TESTS,
+                severity="HIGH",
+                description="Faltan pruebas de integración",
+                recommendation="Agregar pruebas de integración con marcadores apropiados y configuración de test"
+            ))
+        
+        # Violaciones de uso de Faker
+        if not self._analyze_faker_usage(service_path):
+            violations.append(PrincipleViolation(
+                principle=ArchitecturePrinciple.FAKER_DATA,
+                severity="MEDIUM",
+                description="No se utiliza Faker para generar datos de prueba realistas",
+                recommendation="Integrar Faker para generar datos de prueba variados y realistas"
+            ))
+        
+        # Violaciones de escalabilidad
+        if not self._analyze_scalability_features(service_path):
+            violations.append(PrincipleViolation(
+                principle=ArchitecturePrinciple.SCALABILITY,
+                severity="MEDIUM",
+                description="Faltan características de escalabilidad",
+                recommendation="Implementar patrones de escalabilidad como async/await, caching, connection pooling"
+            ))
+        
+        return violations
+    
+    def _calculate_architecture_score(self, drp: bool, tdd: bool, integration: bool, 
+                                    faker: bool, scalability: bool, violations: int) -> float:
+        """Calcula el score de arquitectura"""
+        base_score = 0.0
+        
+        # Puntos por cada principio cumplido
+        if drp:
+            base_score += 20.0
+        if tdd:
+            base_score += 25.0
+        if integration:
+            base_score += 20.0
+        if faker:
+            base_score += 15.0
+        if scalability:
+            base_score += 20.0
+        
+        # Penalización por violaciones
+        violation_penalty = violations * 5.0
+        
+        return max(0.0, base_score - violation_penalty)
+    
+    def _determine_architecture_status(self, score: float) -> str:
+        """Determina el estado de la arquitectura basado en el score"""
+        if score >= 80.0:
+            return "EXCELLENT"
+        elif score >= 60.0:
+            return "GOOD"
+        elif score >= 40.0:
+            return "FAIR"
+        elif score >= 20.0:
+            return "POOR"
+        else:
+            return "CRITICAL"
+    
+    def generate_todo_actions(self, architecture_analysis: ArchitectureAnalysis, 
+                             service_path: str) -> List[TODOAction]:
+        """Genera un plan de acciones TODO para mejorar la arquitectura"""
+        todo_actions = []
+        
+        # Acciones para DRY
+        if not architecture_analysis.drp_compliance:
+            todo_actions.append(TODOAction(
+                priority="HIGH",
+                principle=ArchitecturePrinciple.DRY,
+                action="Refactorizar código duplicado",
+                description="Identificar y consolidar funciones, clases e imports duplicados",
+                estimated_effort="1-2 days",
+                dependencies=[],
+                files_to_modify=["src/", "tests/"]
+            ))
+        
+        # Acciones para TDD
+        if not architecture_analysis.tdd_implementation:
+            todo_actions.append(TODOAction(
+                priority="CRITICAL",
+                principle=ArchitecturePrinciple.TDD,
+                action="Implementar Test Driven Development",
+                description="Crear estructura de tests, configurar pytest y escribir tests unitarios",
+                estimated_effort="1 week",
+                dependencies=[],
+                files_to_modify=["tests/", "pytest.ini", "pyproject.toml"]
+            ))
+        
+        # Acciones para pruebas de integración
+        if not architecture_analysis.integration_tests:
+            todo_actions.append(TODOAction(
+                priority="HIGH",
+                principle=ArchitecturePrinciple.INTEGRATION_TESTS,
+                action="Agregar pruebas de integración",
+                description="Crear tests de integración con marcadores apropiados y configuración de test",
+                estimated_effort="3-5 days",
+                dependencies=["TDD implementation"],
+                files_to_modify=["tests/integration/", "docker-compose.test.yml"]
+            ))
+        
+        # Acciones para Faker
+        if not architecture_analysis.faker_data_usage:
+            todo_actions.append(TODOAction(
+                priority="MEDIUM",
+                principle=ArchitecturePrinciple.FAKER_DATA,
+                action="Integrar Faker para datos de prueba",
+                description="Instalar Faker y crear generadores de datos de prueba realistas",
+                estimated_effort="1-2 days",
+                dependencies=["TDD implementation"],
+                files_to_modify=["requirements.txt", "tests/fixtures/", "tests/conftest.py"]
+            ))
+        
+        # Acciones para escalabilidad
+        if not architecture_analysis.scalability_features:
+            todo_actions.append(TODOAction(
+                priority="MEDIUM",
+                principle=ArchitecturePrinciple.SCALABILITY,
+                action="Implementar características de escalabilidad",
+                description="Agregar patrones de escalabilidad como async/await, caching, connection pooling",
+                estimated_effort="1 week",
+                dependencies=["TDD implementation"],
+                files_to_modify=["src/", "docker-compose.yml", "kubernetes/"]
+            ))
+        
+        # Ordenar por prioridad
+        priority_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+        todo_actions.sort(key=lambda x: priority_order.get(x.priority, 4))
+        
+        return todo_actions
+    
+    def save_todo_md_file(self, service_path: str, architecture_analysis: ArchitectureAnalysis, 
+                          todo_actions: List[TODOAction], structure_report: MicroserviceStructureReport,
+                          base_path: str = ".") -> str:
+        """
+        Genera y guarda el archivo TODO.md con el plan de acciones
+        
+        Args:
+            service_path: Ruta del microservicio
+            architecture_analysis: Análisis de arquitectura
+            todo_actions: Lista de acciones TODO
+            structure_report: Reporte de estructura básica
+            base_path: Ruta base del repositorio
+            
+        Returns:
+            Ruta del archivo TODO.md generado
+        """
+        service_full_path = Path(base_path) / service_path
+        todo_file_path = service_full_path / "TODO.md"
+        
+        # Calcular score general
+        overall_score = (structure_report.score + architecture_analysis.architecture_score) / 2
+        
+        # Determinar estado general
+        if overall_score >= 80:
+            overall_status = "EXCELLENT"
+        elif overall_score >= 60:
+            overall_status = "GOOD"
+        elif overall_score >= 40:
+            overall_status = "FAIR"
+        elif overall_score >= 20:
+            overall_status = "POOR"
+        else:
+            overall_status = "CRITICAL"
+        
+        # Generar contenido del archivo TODO.md
+        todo_content = f"""# TODO.md - Plan de Mejoras de Arquitectura
+
+## 📊 Resumen Ejecutivo
+
+**Microservicio**: `{service_path}`  
+**Fecha de Análisis**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
+**Estado General**: {overall_status}  
+**Score General**: {overall_score:.1f}/100
+
+### 📈 Métricas de Calidad
+- **Score de Estructura**: {structure_report.score:.1f}/100
+- **Score de Arquitectura**: {architecture_analysis.architecture_score:.1f}/100
+- **Total de Violaciones**: {architecture_analysis.total_violations}
+
+## 🏗️ Análisis de Principios de Arquitectura
+
+### ✅ Principios que CUMPLEN
+"""
+        
+        # Agregar principios que cumplen
+        if architecture_analysis.drp_compliance:
+            todo_content += "- **DRY** (Don't Repeat Yourself): ✅ CUMPLE\n"
+        if architecture_analysis.tdd_implementation:
+            todo_content += "- **TDD** (Test Driven Development): ✅ CUMPLE\n"
+        if architecture_analysis.integration_tests:
+            todo_content += "- **Pruebas de Integración**: ✅ CUMPLE\n"
+        if architecture_analysis.faker_data_usage:
+            todo_content += "- **Datos Faker**: ✅ CUMPLE\n"
+        if architecture_analysis.scalability_features:
+            todo_content += "- **Escalabilidad**: ✅ CUMPLE\n"
+        
+        # Agregar principios que NO cumplen
+        todo_content += "\n### ❌ Principios que NO CUMPLEN (Requieren Acción)\n"
+        
+        if not architecture_analysis.drp_compliance:
+            todo_content += "- **DRY** (Don't Repeat Yourself): ❌ VIOLACIÓN\n"
+        if not architecture_analysis.tdd_implementation:
+            todo_content += "- **TDD** (Test Driven Development): ❌ VIOLACIÓN\n"
+        if not architecture_analysis.integration_tests:
+            todo_content += "- **Pruebas de Integración**: ❌ VIOLACIÓN\n"
+        if not architecture_analysis.faker_data_usage:
+            todo_content += "- **Datos Faker**: ❌ VIOLACIÓN\n"
+        if not architecture_analysis.scalability_features:
+            todo_content += "- **Escalabilidad**: ❌ VIOLACIÓN\n"
+        
+        # Detalle de violaciones
+        if architecture_analysis.violations:
+            todo_content += f"""
+## ⚠️ Detalle de Violaciones Detectadas
+
+Total de Violaciones: {architecture_analysis.total_violations}
+- **Críticas**: {architecture_analysis.critical_violations}
+- **Altas**: {architecture_analysis.high_violations}
+- **Medias**: {architecture_analysis.medium_violations}
+- **Bajas**: {architecture_analysis.low_violations}
+
+"""
+            
+            for i, violation in enumerate(architecture_analysis.violations, 1):
+                todo_content += f"""### {i}. [{violation.severity}] {violation.principle.value}
+
+**Descripción**: {violation.description}  
+**Recomendación**: {violation.recommendation}
+
+"""
+        
+        # Plan de acciones TODO
+        todo_content += f"""## 📝 Plan de Acciones TODO
+
+### 🎯 Acciones Prioritarias (Ordenadas por Prioridad)
+
+"""
+        
+        # Agrupar acciones por prioridad
+        priority_groups = {
+            "CRITICAL": [],
+            "HIGH": [],
+            "MEDIUM": [],
+            "LOW": []
+        }
+        
+        for action in todo_actions:
+            priority_groups[action.priority].append(action)
+        
+        # Generar contenido por prioridad
+        for priority in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+            actions = priority_groups[priority]
+            if actions:
+                priority_emoji = {"CRITICAL": "🚨", "HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}
+                todo_content += f"#### {priority_emoji[priority]} {priority}\n\n"
+                
+                for i, action in enumerate(actions, 1):
+                    todo_content += f"""**{i}. {action.action}**
+
+**Descripción**: {action.description}  
+**Esfuerzo Estimado**: {action.estimated_effort}  
+**Archivos a Modificar**: {', '.join(action.files_to_modify)}
+
+"""
+                    
+                    if action.dependencies:
+                        todo_content += f"**Dependencias**: {', '.join(action.dependencies)}\n\n"
+                    else:
+                        todo_content += "\n"
+        
+        # Historias de usuario
+        todo_content += """## 📋 Historias de Usuario para Desarrolladores
+
+### 🎭 Formato de Historia de Usuario
+
+Para cada acción, sigue este formato:
+
+```
+Como [rol]
+Quiero [funcionalidad]
+Para [beneficio]
+
+**Criterios de Aceptación:**
+- [ ] Criterio 1
+- [ ] Criterio 2
+- [ ] Criterio 3
+
+**Estimación**: [tiempo]
+**Prioridad**: [CRITICAL/HIGH/MEDIUM/LOW]
+```
+
+### 📚 Ejemplos de Historias
+
+#### Ejemplo 1: Implementar TDD
+```
+Como desarrollador
+Quiero implementar Test Driven Development
+Para asegurar la calidad del código y facilitar el mantenimiento
+
+**Criterios de Aceptación:**
+- [ ] Crear directorio tests/ con estructura adecuada
+- [ ] Configurar pytest.ini o pyproject.toml
+- [ ] Escribir tests unitarios para funciones existentes
+- [ ] Los tests deben pasar al ejecutar pytest
+
+**Estimación**: 1 semana
+**Prioridad**: CRITICAL
+```
+
+#### Ejemplo 2: Refactorizar Código Duplicado
+```
+Como desarrollador
+Quiero refactorizar código duplicado
+Para mejorar la mantenibilidad y reducir la duplicación
+
+**Criterios de Aceptación:**
+- [ ] Identificar funciones/clases duplicadas
+- [ ] Crear funciones/clases reutilizables
+- [ ] Actualizar imports y referencias
+- [ ] Verificar que no se rompa funcionalidad existente
+
+**Estimación**: 1-2 días
+**Prioridad**: HIGH
+```
+
+## 🚀 Próximos Pasos
+
+1. **Revisar acciones CRITICAL** primero
+2. **Implementar en orden de prioridad**
+3. **Verificar cumplimiento** de cada principio
+4. **Actualizar este archivo** con el progreso
+5. **Ejecutar análisis nuevamente** para verificar mejoras
+
+## 📞 Soporte
+
+Para dudas sobre la implementación:
+- Revisar documentación de cada principio
+- Consultar con el equipo de arquitectura
+- Usar herramientas de análisis de código estático
+
+---
+*Archivo generado automáticamente por MCP Advanced Architecture Inspector*
+"""
+        
+        # Guardar archivo
+        try:
+            todo_file_path.write_text(todo_content, encoding='utf-8')
+            return str(todo_file_path)
+        except Exception as e:
+            raise Exception(f"No se pudo guardar el archivo TODO.md: {e}")
+
+
+# Función de conveniencia para análisis avanzado
+def analyze_microservice_architecture_advanced(service_path: str, base_path: str = ".") -> ArchitectureAnalysis:
+    """
+    Analiza la arquitectura de un microservicio con perfil de arquitecto senior
+    
+    Args:
+        service_path: Ruta al microservicio
+        base_path: Ruta base del repositorio
+        
+    Returns:
+        Análisis completo de arquitectura
+    """
+    inspector = AdvancedArchitectureInspector(base_path)
+    return inspector.analyze_microservice_architecture(service_path)
+
+
+def generate_architecture_todo_plan(service_path: str, base_path: str = ".") -> List[TODOAction]:
+    """
+    Genera un plan de acciones TODO para mejorar la arquitectura
+    
+    Args:
+        service_path: Ruta al microservicio
+        base_path: Ruta base del repositorio
+        
+    Returns:
+        Lista de acciones TODO ordenadas por prioridad
+    """
+    inspector = AdvancedArchitectureInspector(base_path)
+    analysis = inspector.analyze_microservice_architecture(service_path)
+    return inspector.generate_todo_actions(analysis, service_path)
+
+
+def generate_and_save_todo_md(service_path: str, base_path: str = ".") -> str:
+    """
+    Genera y guarda el archivo TODO.md con el plan de acciones
+    
+    Args:
+        service_path: Ruta al microservicio
+        base_path: Ruta base del repositorio
+        
+    Returns:
+        Ruta del archivo TODO.md generado
+    """
+    inspector = AdvancedArchitectureInspector(base_path)
+    
+    # Obtener análisis de estructura básica
+    from .structure_inspector import inspect_microservice_structure
+    structure_report = inspect_microservice_structure(service_path, base_path)
+    
+    # Obtener análisis de arquitectura
+    architecture_analysis = inspector.analyze_microservice_architecture(service_path)
+    
+    # Generar plan TODO
+    todo_actions = inspector.generate_todo_actions(architecture_analysis, service_path)
+    
+    # Guardar archivo TODO.md
+    return inspector.save_todo_md_file(service_path, architecture_analysis, todo_actions, structure_report, base_path) 

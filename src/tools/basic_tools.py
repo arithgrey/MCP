@@ -9,6 +9,8 @@ from .endpoint_detector import detect_service_endpoints, auto_health_check
 from .testing_tools import TestingTools, run_docker_test, run_pytest_coverage, run_specific_test
 from .api_analyzer import analyze_api_service, generate_api_docs
 from .structure_inspector import inspect_microservice_structure, inspect_repository_structure
+from datetime import datetime
+from pathlib import Path
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -487,42 +489,135 @@ def register_tools(mcp):
         }
     
     @mcp.tool()
-    async def base_structure_inspector_microservice(service_path: str = None, base_path: str = ".", template_path: str = None) -> dict:
+    async def audit_service_architecture(service_path: str, base_path: str = ".", generate_todo_md: bool = True) -> dict:
         """
-        Inspecciona la estructura base de microservicios siguiendo estándares técnicos mínimos.
+        Realiza auditoría completa de arquitectura de un microservicio con perfil de arquitecto senior.
+        Incluye análisis de estructura básica, principios de arquitectura y generación de plan de acciones TODO.
         
         Args:
-            service_path: Ruta específica al microservicio (opcional, si no se proporciona se audita todo el repositorio)
+            service_path: Ruta al microservicio a auditar (ej: "src", "services/auth", "microservices/user-service")
             base_path: Ruta base del repositorio (default: ".")
-            template_path: Ruta opcional al archivo de plantilla de configuración
+            generate_todo_md: Si generar y guardar el archivo TODO.md (default: True)
         
         Returns:
-            Reporte completo de la estructura del microservicio o repositorio
+            Reporte completo de auditoría de arquitectura con análisis de principios y plan de acciones TODO
         """
         try:
-            if service_path:
-                # Inspección de un microservicio específico
-                result = inspect_microservice_structure(service_path, base_path, template_path)
-                return {
-                    "success": True,
-                    "type": "microservice",
-                    "template_used": result.get("template_info", "default"),
-                    "data": result.dict()
-                }
+            from .structure_inspector import (
+                analyze_microservice_architecture_advanced,
+                generate_architecture_todo_plan,
+                inspect_microservice_structure,
+                generate_and_save_todo_md
+            )
+            
+            # Análisis de estructura básica
+            structure_report = inspect_microservice_structure(service_path, base_path)
+            
+            # Análisis avanzado de arquitectura
+            architecture_analysis = analyze_microservice_architecture_advanced(service_path, base_path)
+            
+            # Generar plan de acciones TODO
+            todo_actions = generate_architecture_todo_plan(service_path, base_path)
+            
+            # Generar y guardar archivo TODO.md si se solicita
+            todo_md_path = None
+            if generate_todo_md:
+                try:
+                    todo_md_path = generate_and_save_todo_md(service_path, base_path)
+                except Exception as e:
+                    print(f"⚠️  Advertencia: No se pudo generar el archivo TODO.md: {e}")
+            
+            # Calcular score general
+            overall_score = (structure_report.score + architecture_analysis.architecture_score) / 2
+            
+            # Determinar estado general
+            if overall_score >= 80:
+                overall_status = "EXCELLENT"
+            elif overall_score >= 60:
+                overall_status = "GOOD"
+            elif overall_score >= 40:
+                overall_status = "FAIR"
+            elif overall_score >= 20:
+                overall_status = "POOR"
             else:
-                # Auditoría completa del repositorio
-                result = inspect_repository_structure(base_path, None, template_path)
-                return {
-                    "success": True,
-                    "type": "repository",
-                    "template_used": result.get("template_info", "default"),
-                    "data": result.dict()
+                overall_status = "CRITICAL"
+            
+            # Generar resumen ejecutivo
+            executive_summary = f"""
+            Análisis de Arquitectura del Microservicio: {service_path}
+            
+            Estado General: {overall_status} (Score: {overall_score:.1f}/100)
+            
+            Estructura Básica: {structure_report.status.value.upper()} (Score: {structure_report.score:.1f}/100)
+            Arquitectura: {architecture_analysis.architecture_status} (Score: {architecture_analysis.architecture_score:.1f}/100)
+            
+            Principios de Arquitectura:
+            - DRY (Don't Repeat Yourself): {'✅ CUMPLE' if architecture_analysis.drp_compliance else '❌ VIOLACIÓN'}
+            - TDD (Test Driven Development): {'✅ CUMPLE' if architecture_analysis.tdd_implementation else '❌ VIOLACIÓN'}
+            - Pruebas de Integración: {'✅ CUMPLE' if architecture_analysis.integration_tests else '❌ VIOLACIÓN'}
+            - Datos Faker: {'✅ CUMPLE' if architecture_analysis.faker_data_usage else '❌ VIOLACIÓN'}
+            - Escalabilidad: {'✅ CUMPLE' if architecture_analysis.scalability_features else '❌ VIOLACIÓN'}
+            
+            Violaciones Detectadas: {architecture_analysis.total_violations}
+            - Críticas: {architecture_analysis.critical_violations}
+            - Altas: {architecture_analysis.high_violations}
+            - Medias: {architecture_analysis.medium_violations}
+            - Bajas: {architecture_analysis.low_violations}
+            
+            Acciones TODO Prioritarias: {len([a for a in todo_actions if a.priority in ['CRITICAL', 'HIGH']])}
+            
+            {'📄 Archivo TODO.md generado: ' + todo_md_path if todo_md_path else '📄 Archivo TODO.md no generado'}
+            """
+            
+            # Recomendaciones prioritarias
+            priority_recommendations = []
+            for action in todo_actions[:5]:  # Top 5 acciones
+                priority_recommendations.append(f"[{action.priority}] {action.action}: {action.description}")
+            
+            return {
+                "success": True,
+                "service_name": service_path,
+                "service_path": str(Path(base_path) / service_path),
+                "timestamp": datetime.now().isoformat(),
+                
+                # Análisis de estructura básica
+                "structure_report": structure_report.dict(),
+                
+                # Análisis avanzado de arquitectura
+                "architecture_analysis": architecture_analysis.dict(),
+                
+                # Plan de acciones TODO
+                "todo_actions": [action.dict() for action in todo_actions],
+                
+                # Archivo TODO.md generado
+                "todo_md_generated": todo_md_path is not None,
+                "todo_md_path": todo_md_path,
+                
+                # Resumen ejecutivo
+                "executive_summary": executive_summary.strip(),
+                "overall_score": overall_score,
+                "overall_status": overall_status,
+                
+                # Recomendaciones prioritarias
+                "priority_recommendations": priority_recommendations,
+                
+                # Métricas clave
+                "key_metrics": {
+                    "structure_score": structure_report.score,
+                    "architecture_score": architecture_analysis.architecture_score,
+                    "total_violations": architecture_analysis.total_violations,
+                    "critical_violations": architecture_analysis.critical_violations,
+                    "todo_actions_count": len(todo_actions),
+                    "priority_actions_count": len([a for a in todo_actions if a.priority in ['CRITICAL', 'HIGH']])
                 }
+            }
+            
         except Exception as e:
             return {
                 "success": False,
                 "error": str(e),
-                "type": "error"
+                "type": "error",
+                "service_path": service_path
             }
     
     @mcp.tool()
