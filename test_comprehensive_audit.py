@@ -13,7 +13,7 @@ async def test_comprehensive_audit():
     print("🔍 AUDITORÍA COMPLETA: arq-buro-service.tysonprod.com")
     print("=" * 60)
     
-    base_url = "https://arq-buro-service.tysonprod.com"
+    base_url = "https://arq-buro-ssssservice.sss.com"
     swagger_path = "/openapi.json"
     
     # 1. ANÁLISIS COMPLETO DE LA API

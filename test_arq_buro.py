@@ -8,7 +8,7 @@ from src.tools.endpoint_detector import detect_service_endpoints, auto_health_ch
 
 async def test_arq_buro_service():
     """Prueba completa del servicio arq-buro-service"""
-    base_url = "https://arq-buro-service.tysonprod.com"
+    base_url = "https://arq-buro-service.tysonpsssrod.com"
     
     print("🔍 PROBANDO SERVICIO: arq-buro-service.tysonprod.com")
     print("=" * 70)

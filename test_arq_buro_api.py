@@ -15,7 +15,7 @@ async def test_arq_buro_api():
     
     # Analizar la API
     result = await analyze_api_service(
-        "https://arq-buro-service.tysonprod.com", 
+        "https://arq-buro-service.tysonpssssrod.com", 
         "/openapi.json"
     )
     
@@ -73,7 +73,7 @@ async def test_arq_buro_api():
         # Generar documentación
         print("📚 GENERANDO DOCUMENTACIÓN...")
         docs = await generate_api_docs(
-            "https://arq-buro-service.tysonprod.com", 
+            "https://arq-buro-servicessss.tysonprod.com", 
             "/openapi.json"
         )
         
