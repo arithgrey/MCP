@@ -544,8 +544,28 @@ def inspect_microservice_structure(service_path: str, base_path: str = ".", temp
     Returns:
         Reporte de la estructura del microservicio
     """
-    inspector = BaseStructureInspector(base_path, template_path)
-    return inspector.inspect_microservice(service_path)
+    # Resolver rutas de manera más robusta
+    from pathlib import Path
+    current_dir = Path.cwd()
+    
+    # Si service_path es relativo, resolverlo desde current_dir
+    if not Path(service_path).is_absolute():
+        resolved_service_path = (current_dir / service_path).resolve()
+    else:
+        resolved_service_path = Path(service_path)
+    
+    # Si base_path es ".", usar el directorio del servicio
+    if base_path == ".":
+        resolved_base_path = resolved_service_path.parent
+    else:
+        resolved_base_path = Path(base_path)
+    
+    # Crear inspector con la ruta base resuelta
+    inspector = BaseStructureInspector(str(resolved_base_path), template_path)
+    
+    # Usar solo el nombre del directorio del servicio para el análisis
+    service_name = resolved_service_path.name
+    return inspector.inspect_microservice(service_name)
 
 
 def inspect_repository_structure(base_path: str = ".", service_paths: List[str] = None, template_path: str = None) -> RepositoryStructureAudit:
@@ -1022,7 +1042,17 @@ class AdvancedArchitectureInspector:
             Ruta del archivo TODO.md generado
         """
         service_full_path = Path(base_path) / service_path
-        todo_file_path = service_full_path / "TODO.md"
+        
+        # Crear directorio TODO si no existe
+        todo_dir = service_full_path / "TODO"
+        todo_dir.mkdir(exist_ok=True)
+        
+        # Obtener nombre del servicio desde la ruta
+        service_name = Path(service_path).name if service_path != "." else Path(base_path).name
+        
+        # Crear nombre del archivo con formato todo_nombre_servicio.md
+        todo_filename = f"todo_{service_name}.md"
+        todo_file_path = todo_dir / todo_filename
         
         # Calcular score general
         overall_score = (structure_report.score + architecture_analysis.architecture_score) / 2
@@ -1239,8 +1269,28 @@ def analyze_microservice_architecture_advanced(service_path: str, base_path: str
     Returns:
         Análisis completo de arquitectura
     """
-    inspector = AdvancedArchitectureInspector(base_path)
-    return inspector.analyze_microservice_architecture(service_path)
+    # Resolver rutas de manera más robusta
+    from pathlib import Path
+    current_dir = Path.cwd()
+    
+    # Si service_path es relativo, resolverlo desde current_dir
+    if not Path(service_path).is_absolute():
+        resolved_service_path = (current_dir / service_path).resolve()
+    else:
+        resolved_service_path = Path(service_path)
+    
+    # Si base_path es ".", usar el directorio del servicio
+    if base_path == ".":
+        resolved_base_path = resolved_service_path.parent
+    else:
+        resolved_base_path = Path(base_path)
+    
+    # Crear inspector con la ruta base resuelta
+    inspector = AdvancedArchitectureInspector(str(resolved_base_path))
+    
+    # Usar solo el nombre del directorio del servicio para el análisis
+    service_name = resolved_service_path.name
+    return inspector.analyze_microservice_architecture(service_name)
 
 
 def generate_architecture_todo_plan(service_path: str, base_path: str = ".") -> List[TODOAction]:
@@ -1254,9 +1304,29 @@ def generate_architecture_todo_plan(service_path: str, base_path: str = ".") -> 
     Returns:
         Lista de acciones TODO ordenadas por prioridad
     """
-    inspector = AdvancedArchitectureInspector(base_path)
-    analysis = inspector.analyze_microservice_architecture(service_path)
-    return inspector.generate_todo_actions(analysis, service_path)
+    # Resolver rutas de manera más robusta
+    from pathlib import Path
+    current_dir = Path.cwd()
+    
+    # Si service_path es relativo, resolverlo desde current_dir
+    if not Path(service_path).is_absolute():
+        resolved_service_path = (current_dir / service_path).resolve()
+    else:
+        resolved_service_path = Path(service_path)
+    
+    # Si base_path es ".", usar el directorio del servicio
+    if base_path == ".":
+        resolved_base_path = resolved_service_path.parent
+    else:
+        resolved_base_path = Path(base_path)
+    
+    # Crear inspector con la ruta base resuelta
+    inspector = AdvancedArchitectureInspector(str(resolved_base_path))
+    
+    # Usar solo el nombre del directorio del servicio para el análisis
+    service_name = resolved_service_path.name
+    analysis = inspector.analyze_microservice_architecture(service_name)
+    return inspector.generate_todo_actions(analysis, service_name)
 
 
 def generate_and_save_todo_md(service_path: str, base_path: str = ".") -> str:
@@ -1270,17 +1340,37 @@ def generate_and_save_todo_md(service_path: str, base_path: str = ".") -> str:
     Returns:
         Ruta del archivo TODO.md generado
     """
-    inspector = AdvancedArchitectureInspector(base_path)
+    # Resolver rutas de manera más robusta
+    from pathlib import Path
+    current_dir = Path.cwd()
+    
+    # Si service_path es relativo, resolverlo desde current_dir
+    if not Path(service_path).is_absolute():
+        resolved_service_path = (current_dir / service_path).resolve()
+    else:
+        resolved_service_path = Path(service_path)
+    
+    # Si base_path es ".", usar el directorio del servicio
+    if base_path == ".":
+        resolved_base_path = resolved_service_path.parent
+    else:
+        resolved_base_path = Path(base_path)
+    
+    # Crear inspector con la ruta base resuelta
+    inspector = AdvancedArchitectureInspector(str(resolved_base_path))
+    
+    # Usar solo el nombre del directorio del servicio para el análisis
+    service_name = resolved_service_path.name
     
     # Obtener análisis de estructura básica
     from .structure_inspector import inspect_microservice_structure
     structure_report = inspect_microservice_structure(service_path, base_path)
     
     # Obtener análisis de arquitectura
-    architecture_analysis = inspector.analyze_microservice_architecture(service_path)
+    architecture_analysis = inspector.analyze_microservice_architecture(service_name)
     
     # Generar plan TODO
-    todo_actions = inspector.generate_todo_actions(architecture_analysis, service_path)
+    todo_actions = inspector.generate_todo_actions(architecture_analysis, service_name)
     
     # Guardar archivo TODO.md
-    return inspector.save_todo_md_file(service_path, architecture_analysis, todo_actions, structure_report, base_path) 
+    return inspector.save_todo_md_file(service_name, architecture_analysis, todo_actions, structure_report, str(resolved_base_path)) 

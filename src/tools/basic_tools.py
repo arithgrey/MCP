@@ -510,20 +510,36 @@ def register_tools(mcp):
                 generate_and_save_todo_md
             )
             
+            # Resolver rutas de manera más robusta
+            from pathlib import Path
+            current_dir = Path.cwd()
+            
+            # Si service_path es relativo, resolverlo desde current_dir
+            if not Path(service_path).is_absolute():
+                resolved_service_path = (current_dir / service_path).resolve()
+            else:
+                resolved_service_path = Path(service_path)
+            
+            # Si base_path es ".", usar el directorio del servicio
+            if base_path == ".":
+                resolved_base_path = resolved_service_path.parent
+            else:
+                resolved_base_path = Path(base_path)
+            
             # Análisis de estructura básica
-            structure_report = inspect_microservice_structure(service_path, base_path)
+            structure_report = inspect_microservice_structure(str(resolved_service_path), str(resolved_base_path))
             
             # Análisis avanzado de arquitectura
-            architecture_analysis = analyze_microservice_architecture_advanced(service_path, base_path)
+            architecture_analysis = analyze_microservice_architecture_advanced(str(resolved_service_path), str(resolved_base_path))
             
             # Generar plan de acciones TODO
-            todo_actions = generate_architecture_todo_plan(service_path, base_path)
+            todo_actions = generate_architecture_todo_plan(str(resolved_service_path), str(resolved_base_path))
             
             # Generar y guardar archivo TODO.md si se solicita
             todo_md_path = None
             if generate_todo_md:
                 try:
-                    todo_md_path = generate_and_save_todo_md(service_path, base_path)
+                    todo_md_path = generate_and_save_todo_md(str(resolved_service_path), str(resolved_base_path))
                 except Exception as e:
                     print(f"⚠️  Advertencia: No se pudo generar el archivo TODO.md: {e}")
             
