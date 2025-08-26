@@ -20,6 +20,7 @@ from ..core.models import (
     TODOAction
 )
 from .template_loader import TemplateLoader
+from src.tools.file_preventor import FilePreventor
 
 
 class BaseStructureInspector:
@@ -30,6 +31,12 @@ class BaseStructureInspector:
         self.template_loader = TemplateLoader(template_path)
         self.template = self.template_loader.get_template()
         self.scoring_config = self.template_loader.get_scoring_config()
+        
+        # Inicializar el sistema de prevención de archivos
+        if hasattr(self.template, 'file_prevention') and self.template.file_prevention:
+            self.file_preventor = FilePreventor(self.template.file_prevention)
+        else:
+            self.file_preventor = None
         
         # Patrones para validación de contenido (se pueden sobrescribir con plantillas)
         self.dockerfile_patterns = self._get_dockerfile_patterns()
@@ -219,6 +226,10 @@ class BaseStructureInspector:
             else:
                 checks[required_file.name.replace(".", "_")] = file_path.exists()
         
+        # PREVENCIÓN AUTOMÁTICA DE ARCHIVOS RESTRINGIDOS
+        if self.file_preventor:
+            self._prevent_restricted_files(service_path)
+        
         # Mapear a la estructura esperada
         return StructureChecks(
             Dockerfile=checks.get("Dockerfile", False),
@@ -227,6 +238,37 @@ class BaseStructureInspector:
             tests_dir_exists=checks.get("tests_dir_exists", False),
             tests_dir_has_files=checks.get("tests_dir_has_files", False)
         )
+    
+    def _prevent_restricted_files(self, service_path: Path) -> None:
+        """
+        Previene la creación de archivos restringidos según las reglas de prevención
+        
+        Args:
+            service_path: Ruta del microservicio a auditar
+        """
+        if not self.file_preventor:
+            return
+        
+        # Validar la estructura del servicio contra las reglas de prevención
+        violations = self.file_preventor.validate_service_structure(service_path)
+        
+        if violations:
+            print(f"\n🚨 VIOLACIONES DE PREVENCIÓN DETECTADAS en {service_path.name}:")
+            for violation in violations:
+                print(f"  ❌ {violation['file_path']}: {violation['error_message']}")
+                if violation['alternatives']:
+                    print(f"     💡 Alternativas recomendadas:")
+                    for alt in violation['alternatives']:
+                        print(f"        - {alt}")
+                print()
+        
+        # Obtener resumen de prevención
+        prevention_summary = self.file_preventor.get_prevention_summary(service_path)
+        print(f"🛡️  REGLAS DE PREVENCIÓN ACTIVAS:")
+        print(f"   - Makefiles bloqueados: {'✅' if prevention_summary['makefiles_blocked'] else '❌'}")
+        print(f"   - Scripts .sh bloqueados: {'✅' if prevention_summary['shell_scripts_blocked'] else '❌'}")
+        print(f"   - Otras reglas: {prevention_summary['other_rules_count']}")
+        print()
     
     def _audit_config_quality(self, service_path: Path) -> ConfigQuality:
         """Audita la calidad de la configuración usando la plantilla"""

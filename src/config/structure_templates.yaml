@@ -198,6 +198,73 @@ default:
         weight: 3
         required: false
 
+# Configuración de prevención de archivos no permitidos
+file_prevention:
+  # Prevención de Makefiles
+  makefiles:
+    enabled: true
+    file_type: "makefile"
+    blocked_patterns: ["Makefile", "makefile", "GNUmakefile", "*.mk"]
+    allowed_exceptions: []
+    django_microservice_patterns: []
+    error_message: "❌ NO SE PERMITEN MAKEFILES en este proyecto"
+    alternatives:
+      - "docker-compose.yml para orquestación de servicios"
+      - "scripts/ para tareas personalizadas"
+      - "pyproject.toml para comandos Python"
+      - "package.json para proyectos Node.js"
+      - "Dockerfile para configuración de contenedor"
+  
+  # Prevención de Scripts Shell
+  shell_scripts:
+    enabled: true
+    file_type: "shell_script"
+    blocked_patterns: ["*.sh"]
+    allowed_exceptions: ["entrypoint.sh"]
+    django_microservice_patterns:
+      - "manage.py"
+      - "app/settings.py"
+      - "app/wsgi.py"
+      - "app/asgi.py"
+      - "settings.py"
+      - "wsgi.py"
+      - "asgi.py"
+    error_message: "❌ NO SE PERMITEN SCRIPTS .SH excepto entrypoint.sh para microservicios Django"
+    alternatives:
+      - "Dockerfile para configuración de contenedor"
+      - "docker-compose.yml para orquestación"
+      - "requirements.txt para dependencias Python"
+      - "package.json para dependencias Node.js"
+      - "entrypoint.sh solo para microservicios Django existentes"
+  
+  # Otras reglas de restricción
+  other_restricted: []
+  
+  # Prevención de rutas relativas problemáticas
+  path_prevention:
+    enabled: true
+    rule_type: "relative_path"
+    blocked_patterns:
+      - "../"
+      - "./"
+      - "*/../*"
+      - "*/./*"
+      - "from .."
+      - "from ."
+      - "import .."
+      - "import ."
+    allowed_exceptions:
+      - "from . import"  # Imports relativos válidos dentro del mismo paquete
+      - "from .. import"  # Imports relativos válidos hacia paquetes padre
+    error_message: "❌ NO SE PERMITEN RUTAS RELATIVAS PROBLEMÁTICAS que salgan del contexto del proyecto"
+    alternatives:
+      - "Usa rutas absolutas desde la raíz del proyecto"
+      - "Usa imports absolutos: from src.tools import"
+      - "Usa variables de entorno para rutas dinámicas"
+      - "Usa pathlib.Path para manejo robusto de rutas"
+      - "Define rutas base en configuración centralizada"
+    severity: "critical"
+
 # Configuración global de scoring
 scoring:
   # Pesos base para archivos requeridos

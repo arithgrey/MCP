@@ -48,9 +48,11 @@ class StructureTemplate(BaseModel):
     compose_quality: Optional[FileQuality] = None
     gitignore_quality: Optional[FileQuality] = None
     tests_quality: Optional[FileQuality] = None
+    file_prevention: Optional[Any] = None  # Se definirá como FileCreationPolicy
 
 
 class TemplateConfig(BaseModel):
     """Configuración completa de plantillas"""
     default: StructureTemplate
-    scoring: ScoringConfig 
+    scoring: ScoringConfig
+    file_prevention: Optional[Any] = None  # Se definirá como FileCreationPolicy 
