@@ -1,9 +1,10 @@
 # Dockerfile para el servicio MCP
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema mínimas
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    curl \
+    gcc \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Crear directorio de trabajo
@@ -13,17 +14,17 @@ WORKDIR /app
 COPY requirements.txt ./
 
 # Instalar dependencias de Python
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
+# Copiar código de la aplicación
 COPY . .
 
-# Exponer puerto 8000 para SSE
+# Crear usuario no-root
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Exponer puerto
 EXPOSE 8000
 
-# Variables de entorno
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-
-# Configura el entrypoint para ejecutar el servidor MCP en modo SSE
+# Comando por defecto
 ENTRYPOINT ["python", "mcp_server.py", "--sse"]

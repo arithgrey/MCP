@@ -1,284 +1,210 @@
-# MCP Health Check Service
+# Service Landings - Microservicio de Landing Pages
 
-Un servidor MCP (Model Context Protocol) completo para validar la salud de servicios web con capacidades de terminal integradas.
+## 🎯 Descripción
 
-## 🚀 Características
-
-- **Health Checks Automatizados**: Verificación de endpoints de readiness y liveness
-- **Testing con Docker Exec**: Ejecución de tests usando `docker exec nombre_servicio pytest`
-- **Configuración YAML**: Configuración flexible de servicios y umbrales
-- **Herramientas de Terminal**: Ejecución de comandos y monitoreo del sistema
-- **Auditorías en Lote**: Verificación de múltiples servicios simultáneamente
-- **Reportes Detallados**: Generación de reportes legibles con métricas
-- **Integración MCP**: Compatible con Cursor y otros clientes MCP
+Microservicio para gestionar múltiples landing pages por producto. Permite crear templates reutilizables y landings específicas para cada producto con configuración personalizada.
 
 ## 🏗️ Arquitectura
 
-```
-src/
-├── config/           # Configuración y esquemas
-├── core/            # Modelos de datos
-├── tools/           # Herramientas MCP
-│   ├── health.py           # Health checks HTTP
-│   ├── audit_repo.py       # Orquestador de auditorías
-│   ├── terminal_tools.py   # Herramientas de terminal
-│   ├── testing_tools.py    # Herramientas de testing con Docker
-│   └── basic_tools.py      # Registro de herramientas
-└── tests/           # Tests unitarios
-```
+- **Framework**: Django 4.2.7 + Django REST Framework
+- **Base de Datos**: SQLite (MVP) / PostgreSQL (Producción)
+- **Contenedorización**: Docker + Docker Compose
+- **API**: RESTful con paginación automática
+- **Auto-reload**: Gunicorn con StatReloader para desarrollo
+- **Documentación**: Swagger/OpenAPI con drf-yasg
 
-## 🛠️ Instalación
+## 🚀 Instalación y Ejecución
 
-1. **Clonar el repositorio**:
+### Prerrequisitos
+- Docker
+- Docker Compose
+
+### Pasos de instalación
+
+1. **Clonar el repositorio**
 ```bash
-git clone <repo-url>
-cd MCP
+cd ~/enid_service/services/service-landings
 ```
 
-2. **Instalar dependencias**:
+2. **Construir y ejecutar**
 ```bash
-pip install -r requirements.txt
+docker-compose build
+docker-compose up -d
 ```
 
-3. **Configurar el archivo de auditoría**:
+3. **Ejecutar migraciones**
 ```bash
-cp src/config/audit.example.yaml src/config/audit.yaml
-# Editar src/config/audit.yaml según tus necesidades
+docker exec service-landings-service-landings-1 python manage.py migrate
 ```
 
-## 📋 Configuración
-
-### Archivo `audit.yaml`
-
-```yaml
-endpoints:
-  base_url: "http://localhost:8080"
-  readiness: "/readiness"
-  liveness: "/liveness"
-
-thresholds:
-  http_latency_ms: 300
-  coverage_min: 0.80
-
-services:
-  local_service:
-    name: "Servicio Local"
-    base_url: "http://localhost:8080"
-    readiness: "/readiness"
-    liveness: "/liveness"
-```
-
-### Archivo `testing.yaml`
-
-```yaml
-# Configuración de Docker
-docker:
-  default_service: "mcp-service"
-  network: "mcp-network"
-  timeout_seconds: 300
-
-# Configuración de pytest
-pytest:
-  default_command: "pytest"
-  coverage_args: "--cov=src --cov-report=html --cov-report=term-missing"
-  verbose_output: true
-  parallel_workers: 4
-
-# Configuración de servicios
-services:
-  mcp_service:
-    name: "mcp-service"
-    container_name: "mcp-service"
-    test_path: "/app/tests"
-    pytest_config: "pytest.ini"
-```
-
-## 🚀 Uso
-
-### 1. Iniciar el servidor MCP
-
+4. **Crear superusuario (opcional)**
 ```bash
-# Modo stdio (recomendado para Cursor)
-python mcp_server.py
-
-# Modo SSE para testing
-python mcp_server.py --sse
+docker exec service-landings-service-landings-1 python manage.py createsuperuser
 ```
 
-### 2. Herramientas Disponibles
-
-#### Health Checks Individuales
-
-- `health_readiness_check`: Verifica readiness de un servicio
-- `health_liveness_check`: Verifica liveness de un servicio
-- `health_comprehensive_check`: Check completo (readiness + liveness)
-
-#### Auditorías
-
-- `audit_repo_run`: Ejecuta auditoría usando configuración YAML
-- `terminal_run_health_audit`: Auditoría con reporte formateado
-- `terminal_batch_health_check`: Health checks en lote
-
-#### Herramientas de Terminal
-
-- `terminal_execute_command`: Ejecuta comandos de terminal
-- `terminal_get_system_info`: Información del sistema
-- `terminal_health_check_service`: Health check con formato de terminal
-
-#### Herramientas de Testing con Docker
-
-- `docker_test_execute`: Ejecuta tests básicos con docker exec
-- `docker_test_pytest_coverage`: Tests con coverage
-- `docker_test_specific_file`: Tests de archivo específico
-- `docker_test_with_markers`: Tests con marcadores
-- `docker_test_parallel`: Tests en paralelo
-- `docker_test_html_report`: Genera reportes HTML
-- `docker_test_junit_report`: Genera reportes JUnit XML
-
-#### Orquestador de Testing
-
-- `audit_orchestrator_test_suite`: Suite de tests via orquestador
-- `audit_orchestrator_tests_with_coverage`: Tests con coverage via orquestador
-- `audit_orchestrator_comprehensive_audit`: Auditoría completa (health + tests)
-
-### 3. Ejemplos de Uso
-
-#### Health Check Básico
-```python
-# Verificar readiness
-result = await health_readiness_check(
-    base_url="http://localhost:8080",
-    path="/readiness",
-    max_latency_ms=300
-)
-
-# Verificar liveness
-result = await health_liveness_check(
-    base_url="http://localhost:8080",
-    path="/liveness",
-    max_latency_ms=300
-)
+5. **Crear datos de ejemplo**
+```bash
+docker exec service-landings-service-landings-1 python create_sample_data.py
 ```
 
-#### Auditoría Completa
-```python
-# Ejecutar auditoría con configuración por defecto
-audit_result = await audit_repo_run()
+### 🔄 Auto-reload en desarrollo
 
-# Ejecutar auditoría con archivo personalizado
-audit_result = await audit_repo_run("custom_audit.yaml")
-```
+El microservicio incluye auto-reload automático:
+- **Gunicorn** con **StatReloader** detecta cambios en archivos `.py`
+- **Reinicio automático** cuando se modifican archivos del código
+- **Sin necesidad de reconstruir** la imagen Docker
+- **Logs en tiempo real** del proceso de reload
 
-#### Testing con Docker Exec
-```python
-# Ejecutar tests básicos
-result = await docker_test_execute(
-    service_name="mcp-service",
-    test_command="pytest",
-    additional_args="-v"
-)
-print(f"Estado: {result['status']}")
+### 📚 Documentación API (Swagger)
 
-# Tests con coverage
-result = await docker_test_pytest_coverage(
-    service_name="mcp-service",
-    coverage_args="--cov=src --cov-report=html"
-)
-print(f"Coverage generado: {result['success']}")
+El microservicio incluye documentación automática de la API:
+- **Swagger UI**: http://localhost:8084/swagger/
+- **ReDoc**: http://localhost:8084/redoc/
+- **Schema JSON**: http://localhost:8084/swagger.json/
+- **Documentación automática** de todos los endpoints
+- **Ejemplos de uso** y parámetros
 
-# Tests de archivo específico
-result = await docker_test_specific_file(
-    service_name="mcp-service",
-    test_file="tests/test_health.py",
-    additional_args="-v"
-)
-print(f"Archivo ejecutado: {result['success']}")
+### 🏠 Landing por Defecto
 
-# Auditoría completa con health checks y tests
-result = await audit_orchestrator_comprehensive_audit(
-    service_name="mcp-service",
-    include_tests=True
-)
-print(f"Estado general: {result['overall_status']}")
-```
+El microservicio incluye una landing por defecto precargada usando **Django Signals** (igual que otros microservicios):
+- **Nombre**: "Deportes"
+- **Slug**: "kits-para-pasar-al-siguiente-nivel"
+- **Product ID**: 999 (especial para landing por defecto)
+- **Template**: Deportes Template (tipo hero)
+- **Configuración**: Colores verdes (#059669, #10b981)
+- **Carga automática**: Al ejecutar migraciones con `DJANGO_RUNNING_MIGRATIONS=True`
+- **Archivo**: `app/landing/signals.py`
+- **Logs detallados**: Muestra qué templates y landings se crean/existen
 
-#### Comandos de Terminal
-```python
-# Ejecutar comando
-result = await terminal_execute_command("ls -la")
+### 🗄️ Base de Datos
 
-# Obtener información del sistema
-sys_info = await terminal_get_system_info()
-```
+- **PostgreSQL**: Base de datos principal (puerto 5445)
+- **Configuración**: Igual que otros microservicios del proyecto
+- **Variables de entorno**:
+  - `POSTGRES_DB=landings_db`
+  - `POSTGRES_USER=landings_user`
+  - `POSTGRES_PASSWORD=landings_password`
+  - `POSTGRES_HOST=postgres`
+  - `POSTGRES_PORT=5432`
+
+## 📊 Modelos de Datos
+
+### LandingTemplate
+- **name**: Nombre del template
+- **slug**: Identificador único
+- **template_type**: Tipo de template (hero, product, testimonial, etc.)
+- **config**: Configuración JSON del template
+- **is_active**: Estado activo/inactivo
+
+### Landing
+- **name**: Nombre de la landing
+- **slug**: Identificador único para URL
+- **product_id**: ID del producto en enid-store
+- **template**: Template asociado
+- **config**: Configuración específica de la landing
+- **is_active**: Estado activo/inactivo
+
+## 🔌 API Endpoints
+
+### Templates
+- `GET /api/landings/templates/` - Listar templates
+- `POST /api/landings/templates/` - Crear template
+- `GET /api/landings/templates/{id}/` - Obtener template
+- `PUT /api/landings/templates/{id}/` - Actualizar template
+- `DELETE /api/landings/templates/{id}/` - Eliminar template
+- `GET /api/landings/templates/by_type/?type=hero` - Filtrar por tipo
+
+### Landings
+- `GET /api/landings/pages/` - Listar landings
+- `POST /api/landings/pages/` - Crear landing
+- `GET /api/landings/pages/{id}/` - Obtener landing
+- `PUT /api/landings/pages/{id}/` - Actualizar landing
+- `DELETE /api/landings/pages/{id}/` - Eliminar landing
+- `GET /api/landings/pages/by_product/?product_id=1` - Landings por producto
+- `GET /api/landings/pages/search/?q=busqueda` - Buscar landings
+- `GET /api/landings/pages/{id}/config/` - Configuración completa
 
 ## 🧪 Testing
 
-Ejecutar las pruebas:
-
+### Ejecutar tests
 ```bash
-python test_mcp.py
+docker exec service-landings-service-landings-1 python manage.py test
 ```
 
-## 📊 Monitoreo
-
-El MCP proporciona métricas detalladas:
-
-- **Estado del servicio**: HEALTHY, UNHEALTHY, DEGRADED, UNKNOWN
-- **Latencia**: Tiempo de respuesta en milisegundos
-- **Códigos de respuesta**: HTTP status codes
-- **Errores**: Mensajes de error detallados
-- **Reportes**: Resúmenes consolidados con porcentajes de salud
-
-## 🔧 Desarrollo
-
-### Estructura del Proyecto
-
-- **`mcp_server.py`**: Punto de entrada principal
-- **`src/tools/health.py`**: Lógica de health checks HTTP
-- **`src/tools/audit_repo.py`**: Orquestador de auditorías
-- **`src/tools/terminal_tools.py`**: Herramientas de terminal
-- **`src/core/models.py`**: Modelos de datos Pydantic
-
-### Agregar Nuevas Herramientas
-
-1. Crear función en el módulo apropiado
-2. Registrar en `src/tools/basic_tools.py`
-3. Agregar documentación y tipos
-
-### Testing
-
+### Ejecutar tests específicos
 ```bash
-# Ejecutar tests unitarios
-python -m pytest tests/
-
-# Ejecutar script de prueba
-python test_mcp.py
+docker exec service-landings-service-landings-1 python manage.py test tests.test_basic
 ```
 
-## 🌐 Integración con Cursor
+## 📝 Ejemplos de Uso
 
-1. **Configurar Cursor** para usar el MCP
-2. **Importar herramientas** en tu workspace
-3. **Usar comandos** directamente desde el chat
+### 1. Crear un template
+```bash
+curl -X POST http://localhost:8084/api/landings/templates/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mi Template",
+    "slug": "mi-template",
+    "template_type": "hero",
+    "config": {
+      "title": "Título por defecto",
+      "subtitle": "Subtítulo por defecto"
+    }
+  }'
+```
 
-## 📝 Licencia
+### 2. Crear una landing
+```bash
+curl -X POST http://localhost:8084/api/landings/pages/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mi Landing",
+    "slug": "mi-landing",
+    "product_id": 123,
+    "template_id": 1,
+    "config": {
+      "custom_title": "Título personalizado",
+      "custom_subtitle": "Subtítulo personalizado"
+    }
+  }'
+```
 
-MIT License
+### 3. Obtener landings de un producto
+```bash
+curl http://localhost:8084/api/landings/pages/by_product/?product_id=123
+```
 
-## 🤝 Contribuciones
+## 🔧 Configuración
 
-¡Las contribuciones son bienvenidas! Por favor:
+### Variables de entorno
+- `DEBUG`: Modo debug (default: True)
+- `SECRET_KEY`: Clave secreta de Django
+- `ALLOWED_HOSTS`: Hosts permitidos
 
-1. Fork el proyecto
-2. Crea una rama para tu feature
-3. Commit tus cambios
-4. Push a la rama
-5. Abre un Pull Request
+### Base de datos
+- **Desarrollo**: SQLite (db.sqlite3)
+- **Producción**: PostgreSQL (configurar en settings.py)
+
+## 📈 Próximas características
+
+- [ ] Analytics de landings
+- [ ] A/B testing
+- [ ] Caché con Redis
+- [ ] Autenticación JWT
+- [ ] Webhooks para notificaciones
+- [ ] Dashboard de métricas
+
+## 🤝 Integración con otros servicios
+
+### Enid-Store
+El microservicio se integra con `enid-store` mediante el campo `product_id` que referencia al ID del producto en el servicio principal.
+
+### Frontend
+El frontend puede consumir las APIs para:
+- Mostrar múltiples landings por producto
+- Renderizar templates dinámicamente
+- Personalizar contenido por landing
 
 ## 📞 Soporte
 
-Para soporte o preguntas:
-
-- Abre un issue en GitHub
-- Revisa la documentación
-- Consulta los ejemplos de uso 
+Para soporte técnico o preguntas, contactar al equipo de desarrollo. 
