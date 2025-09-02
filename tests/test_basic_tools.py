@@ -9,42 +9,9 @@ from src.tools.basic_tools import register_tools
 class TestBasicTools:
     """Tests para las herramientas básicas del MCP"""
     
-    def test_say_hello(self):
-        """Verifica la función say_hello"""
-        # Crear un mock del MCP para registrar las herramientas
-        mock_mcp = MagicMock()
-        
-        # Registrar las herramientas
-        register_tools(mock_mcp)
-        
-        # Verificar que se registró say_hello
-        mock_mcp.tool.assert_called()
-        
-        # Obtener la función registrada
-        tool_calls = [call for call in mock_mcp.tool.call_args_list]
-        say_hello_call = None
-        for call in tool_calls:
-            if 'say_hello' in str(call):
-                say_hello_call = call
-                break
-        
-        assert say_hello_call is not None, "say_hello no fue registrada"
+    # Eliminado test_say_hello tras retirar la herramienta del registro
     
-    def test_sum_numbers(self):
-        """Verifica la función sum_numbers"""
-        mock_mcp = MagicMock()
-        register_tools(mock_mcp)
-        
-        # Verificar que se registró sum_numbers
-        tool_calls = [call for call in mock_mcp.tool.call_args_list]
-        sum_numbers_call = None
-        for call in tool_calls:
-            if 'sum_numbers' in str(call):
-                sum_numbers_call = call
-                break
-        
-        assert sum_numbers_call is not None, "sum_numbers no fue registrada"
-    
+
     def test_list_items(self):
         """Verifica la función list_items"""
         mock_mcp = MagicMock()
@@ -80,7 +47,7 @@ class TestBasicTools:
     def test_audit_tools_registration(self):
         """Verifica que se registren las herramientas de auditoría"""
         mock_mcp = MagicMock()
-        register_tools(mcp)
+        register_tools(mock_mcp)
         
         # Verificar herramientas de auditoría
         tool_calls = [call for call in mock_mcp.tool.call_args_list]
@@ -116,10 +83,8 @@ class TestBasicTools:
         mock_mcp = MagicMock()
         register_tools(mock_mcp)
         
-        # Lista completa de herramientas esperadas
+        # Lista completa de herramientas esperadas (sin say_hello)
         expected_tools = [
-            'say_hello',
-            'sum_numbers', 
             'list_items',
             'health_readiness_check',
             'health_liveness_check',
@@ -185,10 +150,8 @@ class TestToolDecorators:
         mock_mcp = MagicMock()
         register_tools(mock_mcp)
         
-        # Verificar herramientas síncronas
+        # Verificar herramientas síncronas (sin say_hello)
         sync_tools = [
-            'say_hello',
-            'sum_numbers',
             'list_items'
         ]
         

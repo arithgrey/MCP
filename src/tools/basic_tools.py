@@ -23,16 +23,6 @@ def register_tools(mcp):
     """Registra todas las herramientas básicas"""
     
     @mcp.tool()
-    def say_hello(name: str) -> str:
-        """Devuelve un saludo personalizado."""
-        return f"¡Hola {name}!"
-    
-    @mcp.tool()
-    def sum_numbers(a: float, b: float) -> float:
-        """Suma dos números."""
-        return a + b
-    
-    @mcp.tool()
     def get_claude_rules() -> dict:
         """
         Lee y devuelve las reglas del archivo CLAUDE.md del proyecto.
