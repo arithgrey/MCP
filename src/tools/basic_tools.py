@@ -11,6 +11,13 @@ from .api_analyzer import analyze_api_service, generate_api_docs
 from .structure_inspector import inspect_microservice_structure, inspect_repository_structure
 from datetime import datetime
 from pathlib import Path
+from .claude_rules import load_claude_rules
+from .claude_rules import (
+    start_claude_watcher,
+    stop_claude_watcher,
+    is_claude_watcher_running,
+    get_cached_claude_rules,
+)
 
 def register_tools(mcp):
     """Registra todas las herramientas básicas"""
@@ -25,6 +32,34 @@ def register_tools(mcp):
         """Suma dos números."""
         return a + b
     
+    @mcp.tool()
+    def get_claude_rules() -> dict:
+        """
+        Lee y devuelve las reglas del archivo CLAUDE.md del proyecto.
+        Returns: { success: bool, path: str, content: str }
+        """
+        return load_claude_rules()
+
+    @mcp.tool()
+    def claude_watcher_start(poll_interval_sec: float = 1.0) -> dict:
+        """Inicia el watcher de CLAUDE.md (sondeo)."""
+        return start_claude_watcher(poll_interval_sec)
+
+    @mcp.tool()
+    def claude_watcher_stop() -> dict:
+        """Detiene el watcher de CLAUDE.md."""
+        return stop_claude_watcher()
+
+    @mcp.tool()
+    def claude_watcher_status() -> dict:
+        """Devuelve el estado del watcher de CLAUDE.md."""
+        return is_claude_watcher_running()
+
+    @mcp.tool()
+    def get_cached_claude() -> dict:
+        """Devuelve el contenido cacheado de CLAUDE.md (inicia watcher si no corre)."""
+        return get_cached_claude_rules()
+
     @mcp.tool()
     def list_items(items: list) -> str:
         """Lista los elementos recibidos."""
