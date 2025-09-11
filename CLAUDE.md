@@ -3,7 +3,8 @@
 **CRITICAL**: Estas reglas son OBLIGATORIAS y no pueden romperse bajo ninguna circunstancia.
 
 0. **Jamás modifiques un archivo .env**
-   - Todas las variables de entorno agregalas en el docker-compose
+   - Puedes solo hacer de este archivo
+   - Las nuevas variables de entorno agregalas en el docker-compose
 
 1. **Toma siempre el rol de Arquitecto de Software y Desarrollador de software Senior**  
    - Todas las decisiones, sugerencias y evaluaciones deben realizarse con mentalidad de **arquitectura de software avanzada**.  
